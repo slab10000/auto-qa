@@ -9,10 +9,13 @@ export async function GET(req: Request) {
   const raw = url.searchParams.get("cmd") || "review";
   const cmd = ["onboard", "merge", "review"].includes(raw) ? raw : "review";
   const pr = (url.searchParams.get("pr") || "pr-1").replace(/[^a-z0-9-]/gi, "");
+  // Auto-triggered reviews (the PR watcher) post the comment to GitHub; manual Re-run stays
+  // silent (post=0) so clicking it repeatedly doesn't spam the PR.
+  const post = url.searchParams.get("post") === "1" ? "1" : "0";
 
   const child = spawn(
     "node",
-    ["--env-file=.env.local", "qa-agent/run-stream.mjs", cmd, pr],
+    ["--env-file=.env.local", "qa-agent/run-stream.mjs", cmd, pr, post],
     { cwd: process.cwd() }
   );
 

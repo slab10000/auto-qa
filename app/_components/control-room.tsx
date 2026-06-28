@@ -14,28 +14,102 @@ export function ControlRoom({
 }) {
   const [events, setEvents] = useState<Ev[]>([]);
   const [running, setRunning] = useState(false);
+  const [watch, setWatch] = useState<{ repo: string; watching: boolean; open?: number } | null>(null);
+  const [detected, setDetected] = useState<{ pr: number; title: string } | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const runningRef = useRef(false);
   const startedRef = useRef(false);
+  // Set while a *watcher-launched* review is in flight, so we can record the reviewed head SHA
+  // (or release the claim) when the stream ends. null for manual Re-run.
+  const triggerRef = useRef<{ pr: number; sha: string } | null>(null);
 
-  const start = (cmd: Cmd) => {
-    if (runningRef.current) return;
+  // Tell the server we finished with a watcher-triggered PR: ok → mark this head SHA reviewed
+  // (won't retrigger until the next push); !ok → release so it can be retried.
+  const releaseTrigger = (ok: boolean) => {
+    const t = triggerRef.current;
+    if (!t) return;
+    triggerRef.current = null;
+    fetch("/api/github/poll", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(ok ? { pr: t.pr, status: "done", sha: t.sha } : { pr: t.pr, status: "done" }),
+    }).catch(() => {});
+  };
+
+  const start = (cmd: Cmd, opts?: { pr?: number; post?: boolean; trigger?: { pr: number; sha: string } }) => {
+    if (runningRef.current) return false;
     runningRef.current = true;
+    // Set atomically with the guard (no await between) so a concurrent start can't clobber it.
+    triggerRef.current = opts?.trigger ?? null;
     esRef.current?.close();
     setEvents([]);
     setRunning(true);
-    const es = new EventSource(`/api/run?cmd=${cmd}&pr=pr-1`);
+    const prNum = opts?.pr ?? 1;
+    const post = opts?.post ? "&post=1" : "";
+    const es = new EventSource(`/api/run?cmd=${cmd}&pr=pr-${prNum}${post}`);
     esRef.current = es;
+    const stop = (ok: boolean) => {
+      es.close();
+      runningRef.current = false;
+      setRunning(false);
+      releaseTrigger(ok);
+    };
     es.onmessage = (e) => {
       let ev: Ev;
       try { ev = JSON.parse(e.data); } catch { return; }
       if (ev.type === "log") return;
       setEvents((prev) => [...prev, ev]);
-      if (ev.type === "exit" || ev.type === "error" || ev.type === "done") { es.close(); runningRef.current = false; setRunning(false); }
+      if (ev.type === "done") stop(true);
+      else if (ev.type === "error") stop(false);
+      else if (ev.type === "exit") stop(ev.code === 0);
     };
-    es.onerror = () => { es.close(); runningRef.current = false; setRunning(false); };
+    es.onerror = () => stop(false);
+    return true;
   };
   useEffect(() => () => esRef.current?.close(), []);
+
+  // PR watcher: ask the server if an open PR has a commit we haven't reviewed; if so, claim it
+  // and launch a live, posting review. Safe to call on every tick — the server dedups by SHA.
+  const poll = async () => {
+    if (runningRef.current) return;
+    try {
+      const r = await fetch("/api/github/poll", { cache: "no-store" });
+      const data = await r.json();
+      setWatch({ repo: data.repo, watching: !!data.watching, open: data.openCount });
+      const cand = data.candidates?.[0];
+      if (!cand || runningRef.current) return;
+      // Commit to the run first (sets runningRef + triggerRef atomically); only then announce +
+      // claim. If start() bailed (a manual run beat us to it), don't touch state or claim.
+      const began = start("review", { pr: cand.number, post: true, trigger: { pr: cand.number, sha: cand.headSha } });
+      if (!began) return;
+      setDetected({ pr: cand.number, title: cand.title });
+      // claim server-side so a reload (or another tab) mid-run won't re-launch the same PR
+      fetch("/api/github/poll", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pr: cand.number, status: "running" }),
+      }).catch(() => {});
+    } catch {
+      /* offline / transient — next tick retries */
+    }
+  };
+  // keep the interval/focus listeners pointed at the latest closure without re-subscribing
+  const pollRef = useRef(poll);
+  pollRef.current = poll;
+  useEffect(() => {
+    const tick = () => pollRef.current();
+    tick(); // instant on mount — covers "I just opened the cockpit tab"
+    const id = setInterval(tick, 20000);
+    const onFocus = () => tick(); // instant the moment the tab regains focus
+    const onVis = () => { if (document.visibilityState === "visible") tick(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   // Auto-start from /cockpit?start=onboard|review|merge (deep links) and listen for in-page
   // triggers (the header Onboard button, the ON MERGE "Approve & merge" action).
@@ -101,12 +175,31 @@ export function ControlRoom({
         </span>
         <span style={{ ...mono, fontSize: 11, color: "var(--faint)" }}>— Computer Use, live</span>
         <span style={{ flex: 1 }} />
+        {watch && (
+          <span
+            title={watch.watching ? `Polling ${watch.repo} every 20s · instantly when you focus this tab` : "Couldn't reach GitHub (is `gh` authed?)"}
+            style={{ ...mono, fontSize: 11, color: watch.watching ? "var(--green)" : "var(--faint)", padding: "5px 11px", border: `1px solid ${watch.watching ? "rgba(52,211,153,.3)" : "var(--line)"}`, borderRadius: 999, background: watch.watching ? "rgba(52,211,153,.06)" : "transparent", display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: watch.watching ? "var(--green)" : "var(--faint)", animation: watch.watching ? "pulseI 2.4s infinite" : "none" }} />
+            {watch.watching ? `watching ${watch.repo}` : "watcher offline"}
+          </span>
+        )}
         <span style={{ ...mono, fontSize: 11.5, color: running ? "var(--accent-ink)" : "var(--muted-3)", padding: "5px 11px", border: `1px solid ${running ? "rgba(124,131,255,.3)" : "var(--line)"}`, borderRadius: 999, background: running ? "rgba(124,131,255,.06)" : "transparent" }}>
           {status}
         </span>
         <button className="btn btn-primary" disabled={running} onClick={() => start("review")} style={{ padding: "8px 14px" }}>▶ Re-run review</button>
         <button className="btn" disabled={running} onClick={() => start("onboard")} style={{ padding: "8px 14px" }}>⟳ Re-onboard</button>
       </div>
+
+      {/* PR watcher caught a new commit */}
+      {detected && (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginTop: 14, padding: "9px 13px", borderRadius: 11, background: "rgba(124,131,255,.09)", border: "1px solid rgba(124,131,255,.34)" }}>
+          <span style={{ ...mono, fontWeight: 600, fontSize: 12, color: "var(--accent-ink)" }}>
+            {running ? `🔔 New commit on PR #${detected.pr} — reviewing live` : `✓ Reviewed PR #${detected.pr}`}
+          </span>
+          <span style={{ fontSize: 12.5, color: "var(--muted-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 360 }}>{detected.title}</span>
+        </div>
+      )}
 
       {/* mode badge: using skills vs learning */}
       {mode && (
