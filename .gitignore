@@ -1,0 +1,4 @@
+.env
+.autoqa/
+node_modules/
+.DS_Store

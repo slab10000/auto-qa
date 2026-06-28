@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>auto-qa</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">AQ</span>
+        <div>
+          <h1>auto-qa</h1>
+          <p>Self-improving PR QA</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="#overview">Overview</a>
+        <a href="#memory">Product Memory</a>
+        <a href="#prs">PR Reviews</a>
+        <a href="#evidence">Evidence</a>
+        <a href="#timeline">Agent Timeline</a>
+      </nav>
+      <div class="mode-card">
+        <span class="label">Mode</span>
+        <strong id="modeLabel">loading</strong>
+        <small id="repoLabel">No repo configured</small>
+      </div>
+    </aside>
+
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Local evidence viewer</p>
+          <h2>Knowledge branches for app behavior</h2>
+        </div>
+        <div class="actions">
+          <button id="runMainBtn">Run main learning</button>
+          <button id="analyzePrBtn">Analyze PR 1</button>
+          <button id="promotePrBtn">Promote PR 1</button>
+          <button id="resetBtn" class="ghost">Reset demo</button>
+        </div>
+      </header>
+
+      <section id="setup" class="panel setup-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Setup</p>
+            <h3>Google Managed Agent Connection</h3>
+          </div>
+          <span id="keyStatus" class="pill">no key saved</span>
+        </div>
+        <form id="configForm" class="config-form">
+          <label>
+            <span>Mode</span>
+            <select id="modeInput">
+              <option value="demo">Demo artifacts</option>
+              <option value="google">Google managed agents</option>
+            </select>
+          </label>
+          <label>
+            <span>Repository URL</span>
+            <input id="repoInput" type="url" placeholder="https://github.com/org/repo">
+          </label>
+          <label>
+            <span>Gemini API key</span>
+            <input id="apiKeyInput" type="password" placeholder="Paste key to save or leave blank">
+          </label>
+          <label>
+            <span>Main branch</span>
+            <input id="mainBranchInput" type="text" placeholder="main">
+          </label>
+          <label>
+            <span>GitHub PAT optional</span>
+            <input id="githubPatInput" type="password" placeholder="Private repos only">
+          </label>
+          <label>
+            <span>PR number</span>
+            <input id="prNumberInput" type="text" placeholder="1">
+          </label>
+          <label>
+            <span>PR branch/ref</span>
+            <input id="prBranchInput" type="text" placeholder="feature/my-branch or pull/1/head">
+          </label>
+          <label class="wide">
+            <span>PR title</span>
+            <input id="prTitleInput" type="text" placeholder="Update billing page copy">
+          </label>
+          <label class="wide">
+            <span>PR scope</span>
+            <textarea id="prScopeInput" rows="3" placeholder="What this PR is supposed to change"></textarea>
+          </label>
+          <div class="form-actions">
+            <button id="saveConfigBtn" type="submit">Save config</button>
+            <p class="muted">The key is stored only in ignored local `.autoqa/config.local.json`.</p>
+          </div>
+        </form>
+      </section>
+
+      <section id="overview" class="grid overview-grid">
+        <article class="panel hero-panel">
+          <p class="eyebrow">System state</p>
+          <h3 id="mainTitle">No product memory yet</h3>
+          <p id="mainSummary">Run main learning to create the canonical behavior memory.</p>
+          <div class="metric-row">
+            <div>
+              <span id="behaviorCount">0</span>
+              <small>behaviors</small>
+            </div>
+            <div>
+              <span id="prCount">0</span>
+              <small>PR branches</small>
+            </div>
+            <div>
+              <span id="eventCount">0</span>
+              <small>events</small>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <p class="eyebrow">Latest verdict</p>
+          <div id="latestVerdict" class="verdict empty">Waiting for analysis</div>
+          <p id="latestVerdictCopy" class="muted">The PR agent has not replayed behavior contracts yet.</p>
+        </article>
+      </section>
+
+      <section id="memory" class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Main branch</p>
+            <h3>Product Memory</h3>
+          </div>
+          <span id="lastVerified" class="pill">not verified</span>
+        </div>
+        <div id="behaviorGraph" class="behavior-list"></div>
+        <div class="split">
+          <div>
+            <h4>Learned Skills</h4>
+            <div id="mainSkills" class="file-list"></div>
+          </div>
+          <div>
+            <h4>Reports</h4>
+            <div id="mainReports" class="file-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="prs" class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Branch memory</p>
+            <h3>Pull Request Reviews</h3>
+          </div>
+        </div>
+        <div id="prList" class="pr-list empty-list">No PR memories yet.</div>
+      </section>
+
+      <section id="evidence" class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Screenshots</p>
+            <h3>Evidence History</h3>
+          </div>
+        </div>
+        <div id="evidenceGrid" class="evidence-grid"></div>
+      </section>
+
+      <section id="timeline" class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Inside the system</p>
+            <h3>Agent Timeline</h3>
+          </div>
+        </div>
+        <div id="timelineList" class="timeline"></div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" hidden></div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
