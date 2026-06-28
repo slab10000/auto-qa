@@ -53,7 +53,7 @@ export async function reviewPR(prRef = "1", { onEvent, post = true } = {}) {
     generated_at: stamp(),
     took_ms: Date.now() - t0,
     verdict: res.scope.verdict,
-    behavior_checks: [], // GitHub flow is page-level visual + scope; nav contracts live in main memory
+    behavior_checks: res.behaviorChecks ?? [], // learned nav contracts, replayed on the PR build
     route_metrics,
     visual_comparisons,
     scope_analysis: res.scope,

@@ -128,7 +128,27 @@ export type Comparison = {
   summary: string;
   before?: string | null; // evidence() url (main baseline)
   after?: string | null; // evidence() url (this PR)
+  scope?: "in" | "out" | null; // is THIS change in/out of the PR's stated scope?
+  navChanged?: boolean; // a learned nav contract for this screen no longer holds
+  navObserved?: string; // what happened instead (e.g. "modal")
 };
+
+const FILE_BY_SCREEN: Record<string, string> = {
+  home: "index.html", store: "products.html", dashboard: "dashboard.html", tasks: "tasks.html", contact: "contact.html",
+};
+// Classify a single screen's change as in/out of scope by matching it against the scope lists.
+function classifyScope(screen: string, inScope: string[], outScope: string[]): "in" | "out" | null {
+  const name = (screen || "").toLowerCase();
+  const file = FILE_BY_SCREEN[name];
+  const hit = (arr: string[]) =>
+    (arr || []).some((x) => {
+      const t = (x || "").toLowerCase();
+      return (name && t.includes(name)) || (!!file && t.includes(file));
+    });
+  if (hit(outScope)) return "out";
+  if (hit(inScope)) return "in";
+  return null;
+}
 export type Analysis = {
   key: string;
   source: "local" | "github";
@@ -153,6 +173,7 @@ export type Analysis = {
   githubUrl: string | null;
   navigation: { usedSkills: boolean; cachedPages: number; exploredPages: number } | null;
   reusedSession: boolean;
+  behavior: { total: number; mismatches: number } | null; // learned nav contracts replayed on the PR
   // What this branch contributes to main when merged (and whether it already did).
   onMerge: {
     merged: boolean;
@@ -225,6 +246,7 @@ export async function getAnalyses(): Promise<Analysis[]> {
       changedFiles: r.changed_files ?? [],
       comparisons: (r.visual_comparisons ?? []).map((c: any) => {
         const id = (c.screen || "").toLowerCase();
+        const bc = (r.behavior_checks ?? []).find((b: any) => (b.screen || "").toLowerCase() === id);
         return {
           screen: c.screen,
           changed: !!c.changed,
@@ -232,6 +254,9 @@ export async function getAnalyses(): Promise<Analysis[]> {
           summary: c.summary,
           before: r.evidence?.main?.[id] ? evidence(r.evidence.main[id]) : null,
           after: r.evidence?.pr?.[id] ? evidence(r.evidence.pr[id]) : null,
+          scope: classifyScope(c.screen, r.scope_analysis?.in_scope ?? [], r.scope_analysis?.out_of_scope ?? []),
+          navChanged: bc ? bc.match === false : false,
+          navObserved: bc && bc.match === false ? bc.observed?.type || "changed" : undefined,
         };
       }),
       scopeIn: r.scope_analysis?.in_scope ?? [],
@@ -255,6 +280,9 @@ export async function getAnalyses(): Promise<Analysis[]> {
           }
         : null,
       reusedSession: !!r.code_review?.reused_session,
+      behavior: (r.behavior_checks ?? []).length
+        ? { total: r.behavior_checks.length, mismatches: r.behavior_checks.filter((b: any) => !b.match).length }
+        : null,
       onMerge: {
         merged: !!r.merged,
         mergedAt: r.merged_at ?? null,
@@ -293,7 +321,11 @@ export async function getAnalyses(): Promise<Analysis[]> {
       tookMs: null,
       generatedAt: null,
       changedFiles: p.changedFiles,
-      comparisons: p.comparisons,
+      comparisons: p.comparisons.map((c) => ({
+        ...c,
+        scope: classifyScope(c.screen, p.scopeIn, p.scopeOut),
+        navChanged: false,
+      })),
       scopeIn: p.scopeIn,
       scopeOut: p.scopeOut,
       codeReview: p.codeReview,
@@ -302,6 +334,7 @@ export async function getAnalyses(): Promise<Analysis[]> {
       githubUrl: `https://github.com/${g.repo}/pull/${prNumber}`,
       navigation: null,
       reusedSession: false,
+      behavior: null,
       onMerge: {
         merged: false,
         mergedAt: null,

@@ -7,29 +7,98 @@
     "branch": "pr-store-copy",
     "base": "main"
   },
-  "generated_at": "2026-06-28T07:03:13.546Z",
-  "took_ms": 92752,
-  "verdict": "WARN",
-  "behavior_checks": [],
+  "generated_at": "2026-06-28T07:45:05.352Z",
+  "took_ms": 40268,
+  "verdict": "FAIL",
+  "behavior_checks": [
+    {
+      "contract_id": "home-nav-store",
+      "screen": "Store",
+      "action": "Click \"Store\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/products.html",
+        "visual_anchor": "Store heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/products.html"
+      },
+      "match": true
+    },
+    {
+      "contract_id": "home-nav-dashboard",
+      "screen": "Dashboard",
+      "action": "Click \"Dashboard\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/dashboard.html",
+        "visual_anchor": "Dashboard heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/dashboard.html"
+      },
+      "match": true
+    },
+    {
+      "contract_id": "home-nav-tasks",
+      "screen": "Tasks",
+      "action": "Click \"Tasks\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/tasks.html",
+        "visual_anchor": "Tasks heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/tasks.html"
+      },
+      "match": true
+    },
+    {
+      "contract_id": "home-nav-contact",
+      "screen": "Contact",
+      "action": "Click \"Contact\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/contact.html",
+        "visual_anchor": "Contact heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/contact.html"
+      },
+      "match": true
+    }
+  ],
   "route_metrics": {
     "used_skills": true,
     "cached": true,
     "cached_pages": 4,
     "explored_pages": 0,
-    "ms": 1768,
+    "ms": 1772,
     "llmCalls": 0,
     "pages": [
       {
         "page": "Store",
         "cached": true,
         "llmCalls": 0,
-        "ms": 446
+        "ms": 458
       },
       {
         "page": "Dashboard",
         "cached": true,
         "llmCalls": 0,
-        "ms": 437
+        "ms": 433
       },
       {
         "page": "Tasks",
@@ -41,7 +110,7 @@
         "page": "Contact",
         "cached": true,
         "llmCalls": 0,
-        "ms": 446
+        "ms": 442
       }
     ]
   },
@@ -49,52 +118,52 @@
     {
       "screen": "Home",
       "changed": true,
-      "summary": "The main hero headline copy was updated from 'The workspace for teams who ship.' to 'Ship faster with one workspace for your whole team.'",
+      "summary": "The main hero headline has been updated from 'The workspace for teams who ship.' to 'Ship faster with one workspace for your whole team.'",
       "severity": "low"
     },
     {
       "screen": "Store",
       "changed": true,
-      "summary": "The subtext description below the 'Plans & add-ons' heading has been updated to 'Browse plans, add-ons, and hardware — add what your team needs and check out in seconds.'",
+      "summary": "The subtitle text under 'Plans & add-ons' has been updated to describe browsing plans, add-ons, and hardware.",
       "severity": "low"
     },
     {
       "screen": "Dashboard",
       "changed": false,
-      "summary": "No changes detected between the baseline and the PR version.",
+      "summary": "No changes were detected between the baseline and the PR version.",
       "severity": "none"
     },
     {
       "screen": "Tasks",
       "changed": false,
-      "summary": "No changes detected between the baseline and PR versions.",
+      "summary": "No changes detected between the baseline and the PR version.",
       "severity": "none"
     },
     {
       "screen": "Contact",
       "changed": false,
-      "summary": "No changes detected between the baseline and the PR version.",
+      "summary": "No changes were detected between the baseline and the PR version of the Contact page.",
       "severity": "none"
     }
   ],
   "scope_analysis": {
-    "verdict": "WARN",
+    "verdict": "FAIL",
     "classification": "needs_review",
     "in_scope": [
-      "Update to the subtext description on the Store page (products.html) to mention plans, add-ons, and hardware."
+      "Updated subtitle copy in products.html to include plans, add-ons, and hardware."
     ],
     "out_of_scope": [
-      "Update to the main hero headline copy on the Home page (index.html)."
+      "Updated the main hero headline in index.html (Home page) from 'The workspace for teams who ship.' to 'Ship faster with one workspace for your whole team.'"
     ],
-    "reasoning": "The PR contains a change to the Home page (index.html) hero headline which directly violates the stated scope of 'Store page copy only'. This out-of-scope change needs to be reviewed or reverted."
+    "reasoning": "The stated scope of the PR is strictly 'Store page copy only'. While the changes to products.html are expected, the modification to the homepage hero headline in index.html is completely out of scope and should be reverted or handled in a separate pull request."
   },
   "code_review": {
     "ran_ok": null,
     "run_method": "timed out",
-    "run_evidence": "remote sandbox did not finish within 90s",
+    "run_evidence": "remote sandbox did not finish within 20s",
     "scope_match": "unclear",
     "risk": "unknown",
-    "summary": "The remote managed-agent code review did not finish within 90s and was skipped — the visual behavior + scope analysis above stand.",
+    "summary": "The remote managed-agent code review did not finish within 20s and was skipped — the visual behavior + scope analysis above stand.",
     "concerns": [],
     "environment_id": null,
     "ran_in": "remote managed agent · antigravity",
@@ -123,6 +192,6 @@
   "github": {
     "repo": "slab10000/test-app",
     "url": "https://github.com/slab10000/test-app/pull/1",
-    "posted": "https://github.com/slab10000/test-app/pull/1"
+    "posted": null
   }
 }

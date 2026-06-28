@@ -11,7 +11,7 @@ import { reachGoal } from "./navigate.mjs";
 import { routeKey } from "./routes.mjs";
 import { remoteReview, remotePostComment } from "./code-review.mjs";
 import { VIEWPORT, navGoal } from "./config.mjs";
-import { AUTOQA, writePng } from "./memory.mjs";
+import { AUTOQA, paths, readJSON, writePng } from "./memory.mjs";
 
 const gh = (args) => execFileSync("gh", args, { encoding: "utf8" });
 const git = (args, cwd) => execFileSync("git", args, { cwd, encoding: "utf8" });
@@ -104,6 +104,7 @@ export async function githubReview(repo, prNumber, { onEvent, post = true, resum
     emit({ type: "step", action: entry.action, intent: entry.intent, url: entry.url, shot: buf ? rel : undefined, cached: !!cached });
   };
   const routeStats = [];
+  const behaviorChecks = [];
   for (const f of pages) {
     const name = nameFor(f);
     await page.goto(site.url, { waitUntil: "load" }); // start from Home; the nav is on every page
@@ -118,6 +119,20 @@ export async function githubReview(repo, prNumber, { onEvent, post = true, resum
       routeStats.push({ page: name, cached: nav.cached, llmCalls: nav.llmCalls, ms: nav.ms });
       emit({ type: "route", goal: name, cached: nav.cached, llmCalls: nav.llmCalls, ms: nav.ms });
       console.log(`   ${name}: ${nav.cached ? "⚡ cached (0 calls)" : `🔎 explored (${nav.llmCalls} calls)`} ${nav.ms}ms`);
+
+      // Behavior contract replay: did clicking that nav still NAVIGATE to the expected page,
+      // or did the button's behavior change (e.g. it now opens a modal / does nothing)?
+      const contract = await readJSON(path.join(paths.mainBehaviors, `home-nav-${name.toLowerCase()}.json`), null);
+      if (contract) {
+        const navigated = page.url().endsWith(f); // observed BEFORE the safety fallback below
+        const observed = navigated
+          ? { type: "navigation", url_changed: true, destination_url: new URL(page.url()).pathname }
+          : { type: "no-navigation", url_changed: false, destination_url: null };
+        const match = navigated && contract.expected_result?.type === "navigation";
+        behaviorChecks.push({ contract_id: contract.id, screen: name, action: contract.action, expected: contract.expected_result, observed, match });
+        emit({ type: "contract", screen: name, action: contract.action, expected: contract.expected_result, observed, match });
+        if (!match) console.log(`   ⚠ ${name}: nav contract MISMATCH — expected navigation → ${contract.expected_result?.destination_url}, observed ${page.url()}`);
+      }
     }
     if (f !== "index.html" && !page.url().endsWith(f)) await page.goto(`${site.url}/${f}`, { waitUntil: "load" }); // safety
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -191,7 +206,7 @@ export async function githubReview(repo, prNumber, { onEvent, post = true, resum
     }
   }
   emit({ type: "report", verdict: scope.verdict, classification: scope.classification, url: pr.url, posted });
-  return { pr, scope, comparisons, code_review, changedFiles, body, posted, routeStats };
+  return { pr, scope, comparisons, code_review, changedFiles, body, posted, routeStats, behaviorChecks };
 }
 
 function renderComment(pr, scope, comparisons, cr, changedFiles) {

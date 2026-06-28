@@ -151,8 +151,25 @@ export default async function OverviewPage() {
                   <p style={{ color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.6, margin: "12px 0 0" }}>{a.description}</p>
                 )}
 
-                {(a.navigation || a.reusedSession) && (
+                {(a.navigation || a.reusedSession || a.behavior) && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+                    {a.behavior && (
+                      <span
+                        style={{
+                          fontFamily: "var(--mono)",
+                          fontSize: 11,
+                          padding: "4px 10px",
+                          borderRadius: 7,
+                          color: a.behavior.mismatches ? "var(--red)" : "var(--green)",
+                          background: a.behavior.mismatches ? "rgba(248,113,113,.08)" : "rgba(52,211,153,.08)",
+                          border: `1px solid ${a.behavior.mismatches ? "rgba(248,113,113,.3)" : "rgba(52,211,153,.3)"}`,
+                        }}
+                      >
+                        {a.behavior.mismatches
+                          ? `✗ ${a.behavior.mismatches} navigation${a.behavior.mismatches === 1 ? "" : "s"} changed`
+                          : `✓ ${a.behavior.total} navigation${a.behavior.total === 1 ? "" : "s"} verified intact`}
+                      </span>
+                    )}
                     {a.navigation && (
                       <span
                         style={{
@@ -184,11 +201,22 @@ export default async function OverviewPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       {a.comparisons.map((c) => (
                         <div key={c.screen}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
                             <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--accent-ink)", background: "rgba(124,131,255,.1)", border: "1px solid rgba(124,131,255,.24)", padding: "3px 9px", borderRadius: 6, flex: "0 0 auto" }}>{c.screen}</span>
                             <Sev changed={c.changed} severity={c.severity} />
-                            <span style={{ fontSize: 12.5, color: "var(--muted-2)" }}>{c.summary || "no change"}</span>
+                            {c.scope === "out" && (
+                              <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".08em", color: "var(--red)", background: "rgba(248,113,113,.1)", border: "1px solid rgba(248,113,113,.35)", padding: "3px 8px", borderRadius: 6 }}>OUT OF SCOPE</span>
+                            )}
+                            {c.scope === "in" && (
+                              <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".08em", color: "var(--green)", background: "rgba(52,211,153,.1)", border: "1px solid rgba(52,211,153,.35)", padding: "3px 8px", borderRadius: 6 }}>IN SCOPE</span>
+                            )}
+                            {c.navChanged && (
+                              <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".08em", color: "var(--red)", background: "rgba(248,113,113,.12)", border: "1px solid rgba(248,113,113,.45)", padding: "3px 8px", borderRadius: 6 }}>
+                                ✗ NAVIGATION CHANGED{c.navObserved ? ` → ${c.navObserved}` : ""}
+                              </span>
+                            )}
                           </div>
+                          <div style={{ fontSize: 12.5, color: "var(--muted-2)", marginTop: 6 }}>{c.summary || "no change"}</div>
                           {c.changed && c.before && c.after && (
                             <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 12, marginTop: 10 }}>
                               <figure style={{ margin: 0 }}>
@@ -213,23 +241,6 @@ export default async function OverviewPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {(a.scopeIn.length > 0 || a.scopeOut.length > 0) && (
-                  <div className="acc-sec" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16 }}>
-                    {a.scopeIn.length > 0 && (
-                      <div>
-                        <div className="k" style={{ color: "var(--green)" }}>In scope</div>
-                        <ul className="list in">{a.scopeIn.map((x, j) => <li key={j}>{x}</li>)}</ul>
-                      </div>
-                    )}
-                    {a.scopeOut.length > 0 && (
-                      <div>
-                        <div className="k" style={{ color: "var(--red)" }}>What it caught · out of scope</div>
-                        <ul className="list out">{a.scopeOut.map((x, j) => <li key={j}>{x}</li>)}</ul>
-                      </div>
-                    )}
                   </div>
                 )}
 
