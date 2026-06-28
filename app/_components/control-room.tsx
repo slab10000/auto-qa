@@ -48,7 +48,9 @@ export function ControlRoom({
     const post = opts?.post ? "&post=1" : "";
     const es = new EventSource(`/api/run?cmd=${cmd}&pr=pr-${prNum}${post}`);
     esRef.current = es;
+    let doneWatch: ReturnType<typeof setTimeout> | null = null;
     const stop = (ok: boolean) => {
+      if (doneWatch) { clearTimeout(doneWatch); doneWatch = null; }
       es.close();
       runningRef.current = false;
       setRunning(false);
@@ -62,6 +64,12 @@ export function ControlRoom({
       if (ev.type === "done") stop(true);
       else if (ev.type === "error") stop(false);
       else if (ev.type === "exit") stop(ev.code === 0);
+      else if (ev.type === "report" && ev.verdict && !doneWatch) {
+        // The verdict is in and report.json is written — the run is essentially complete.
+        // Guarantee the UI recovers even if the trailing done/exit event is lost on a flaky
+        // connection (the SSE heartbeat should keep it alive, but never hang on it).
+        doneWatch = setTimeout(() => stop(true), 20000);
+      }
     };
     es.onerror = () => stop(false);
     return true;

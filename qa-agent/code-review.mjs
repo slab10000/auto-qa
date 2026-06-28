@@ -13,7 +13,7 @@ const AGENT = "antigravity-preview-05-2026";
 
 // Managed-agent calls run in a remote sandbox and can be slow (or stall); cap them so a
 // review never hangs. On timeout we fall back gracefully — the visual + scope analysis stand.
-const REMOTE_TIMEOUT_MS = Number(process.env.AUTOQA_REMOTE_TIMEOUT_MS) || 120000;
+const REMOTE_TIMEOUT_MS = Number(process.env.AUTOQA_REMOTE_TIMEOUT_MS) || 180000;
 const TIMED_OUT = Symbol("timeout");
 function withTimeout(promise, ms = REMOTE_TIMEOUT_MS) {
   let t;
@@ -112,7 +112,10 @@ export async function remoteReview({ repo, prNumber, title, body, baseRef, headR
   const cloneUrl = `https://github.com/${repo}.git`;
   const input =
     `You are a senior QA + code reviewer in a fresh Linux sandbox that has git, node, npm, python3 and curl.\n` +
-    `Do EVERYTHING below with shell/code execution, then report. Work in /tmp/pr.\n\n` +
+    `Do EVERYTHING below with shell/code execution, then report. Work in /tmp/pr.\n` +
+    `HARD RULE: every command MUST return on its own within ~60s. NEVER start a server, watcher, or any\n` +
+    `process that runs indefinitely without backgrounding it, redirecting its output, and killing it in the\n` +
+    `same step. A blocking or foreground long-running process hangs the sandbox and fails the whole review.\n\n` +
     `Repository: ${cloneUrl}\nBase branch: ${baseRef}\nPR head branch: ${headRef}\n` +
     `PR title: ${title}\nPR description: ${body || "(none)"}\n\n` +
     `STEP 1 — Get the PR code:\n` +
@@ -120,10 +123,17 @@ export async function remoteReview({ repo, prNumber, title, body, baseRef, headR
     `  git fetch origin ${baseRef} ${headRef} && git checkout ${headRef}\n` +
     `STEP 2 — Compute the diff you will review:\n` +
     `  git diff origin/${baseRef}...origin/${headRef}\n` +
-    `STEP 3 — RUN THE APP and confirm it actually works:\n` +
-    `  - If package.json exists with a build/start script: install deps (npm ci || npm install), run the build, then start/serve it.\n` +
-    `  - If it is a static site (.html files, no build step): serve the repo root with 'python3 -m http.server 8000 &'.\n` +
-    `  - Then PROVE it responds: curl -s -o /dev/null -w '%{http_code}' each main page/route. Treat build errors or non-2xx/3xx responses as a failure.\n` +
+    `STEP 3 — VERIFY THE APP BOOTS, then KILL the server. CRITICAL: NEVER leave a server running and\n` +
+    `  NEVER run one in the foreground — a live or foreground process hangs the sandbox forever and the\n` +
+    `  review never completes. Start the server in the BACKGROUND with its output redirected, probe it,\n` +
+    `  then KILL it — all inside ONE command bounded by 'timeout' so it always returns. Use this pattern:\n` +
+    `    cd /tmp/pr\n` +
+    `    if [ -f package.json ]; then (npm ci || npm install) && (npm run build 2>/dev/null || echo 'no build step'); fi\n` +
+    `    # static site: background → probe → kill, hard-bounded by timeout\n` +
+    `    timeout 45 bash -lc '(python3 -m http.server 8000 >/tmp/srv.log 2>&1 &) ; sleep 2 ; for p in $(ls *.html 2>/dev/null || echo /); do printf "%s " "$p"; curl -s -o /dev/null -w "%{http_code}\\n" http://localhost:8000/$p; done; pkill -f http.server 2>/dev/null || true'\n` +
+    `  If the app is served by node/npm rather than static files, background the start command the same way\n` +
+    `  ('(npm start >/tmp/srv.log 2>&1 &)'), curl its port, then 'pkill -f node'. Treat build errors or\n` +
+    `  non-2xx/3xx HTTP codes as a failure. EVERY server you start MUST be killed before the step ends.\n` +
     `STEP 4 — Review the STEP 2 diff against the STATED scope (title/description). Flag anything risky or not declared (scope creep).\n\n` +
     `Reply with ONLY a JSON object and nothing else:\n` +
     `{"ran_ok":true|false,"run_method":string,"run_evidence":string,` +

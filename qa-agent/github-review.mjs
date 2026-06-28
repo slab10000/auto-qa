@@ -176,6 +176,9 @@ export async function githubReview(repo, prNumber, { onEvent, post = true, resum
   const scope = parseJSON(scopeTxt, { verdict: "WARN", classification: "needs_review", in_scope: [], out_of_scope: [], reasoning: scopeTxt });
   emit({ type: "scope", ...scope });
 
+  // The visual + scope work is done; the only thing left is the remote managed-agent code review,
+  // which can sit silently for a while. Tell the cockpit so it shows progress, not a frozen frame.
+  emit({ type: "phase", phase: "code-review-wait", message: "Reviewing code in the managed-agent sandbox…" });
   const code_review = await codeReviewPromise;
 
   // 6) Compose the comment, then post it.

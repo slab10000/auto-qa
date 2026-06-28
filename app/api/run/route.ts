@@ -22,9 +22,33 @@ export async function GET(req: Request) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
-      const sse = (line: string) => {
-        try { controller.enqueue(encoder.encode(`data: ${line}\n\n`)); } catch {}
+      let closed = false;
+      const enqueue = (s: string) => {
+        if (closed) return;
+        try { controller.enqueue(encoder.encode(s)); } catch { closed = true; }
       };
+      const sse = (line: string) => enqueue(`data: ${line}\n\n`);
+
+      // Heartbeat. The managed-agent code review can sit SILENTLY for a minute+ at the end of a
+      // review (the Antigravity sandbox is slow/degraded). With no bytes on the wire the SSE
+      // connection gets dropped by the browser/OS/dev server, and the trailing done/exit event
+      // is delivered into a dead socket — so the cockpit stalls forever even though the run
+      // finished. A comment ping every 12s keeps the stream warm so the terminal event lands.
+      const unref = (t: unknown) => { (t as { unref?: () => void })?.unref?.(); };
+      const hb = setInterval(() => enqueue(`: hb\n\n`), 12000);
+      unref(hb);
+      // Backstop: never let a wedged child hold the connection open indefinitely.
+      const cap = setTimeout(() => { try { child.kill("SIGKILL"); } catch {} }, 6 * 60_000);
+      unref(cap);
+
+      const finish = (code: number | null) => {
+        clearInterval(hb);
+        clearTimeout(cap);
+        sse(JSON.stringify({ type: "exit", code }));
+        closed = true;
+        try { controller.close(); } catch {}
+      };
+
       let buf = "";
       child.stdout.on("data", (d: Buffer) => {
         buf += d.toString();
@@ -39,10 +63,11 @@ export async function GET(req: Request) {
         // surface agent logs to the browser console without polluting the event stream
         sse(JSON.stringify({ type: "log", message: d.toString().trim() }));
       });
-      child.on("close", (code) => {
-        sse(JSON.stringify({ type: "exit", code }));
-        try { controller.close(); } catch {}
+      child.on("error", (err: Error) => {
+        sse(JSON.stringify({ type: "error", message: String(err?.message || err) }));
+        finish(1);
       });
+      child.on("close", (code) => finish(code));
     },
     cancel() {
       child.kill();
