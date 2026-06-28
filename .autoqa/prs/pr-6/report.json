@@ -1,0 +1,200 @@
+{
+  "pr": {
+    "id": "pr-6",
+    "number": 6,
+    "title": "Polish Dashboard welcome copy",
+    "description": "Small copy refresh on the Dashboard page — makes the welcome subtitle a bit more descriptive and reassuring for returning users.\n\nCopy-only change, no functional impact.",
+    "branch": "feat/dashboard-copy-polish",
+    "base": "main"
+  },
+  "generated_at": "2026-06-28T18:03:46.202Z",
+  "took_ms": 82424,
+  "verdict": "FAIL",
+  "behavior_checks": [
+    {
+      "contract_id": "home-nav-store",
+      "screen": "Store",
+      "action": "Click \"Store\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/products.html",
+        "visual_anchor": "Store heading visible"
+      },
+      "observed": {
+        "type": "no-navigation",
+        "url_changed": false,
+        "destination_url": null
+      },
+      "match": false
+    },
+    {
+      "contract_id": "home-nav-dashboard",
+      "screen": "Dashboard",
+      "action": "Click \"Dashboard\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/dashboard.html",
+        "visual_anchor": "Dashboard heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/dashboard.html"
+      },
+      "match": true
+    },
+    {
+      "contract_id": "home-nav-tasks",
+      "screen": "Tasks",
+      "action": "Click \"Tasks\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/tasks.html",
+        "visual_anchor": "Tasks heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/tasks.html"
+      },
+      "match": true
+    },
+    {
+      "contract_id": "home-nav-contact",
+      "screen": "Contact",
+      "action": "Click \"Contact\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/contact.html",
+        "visual_anchor": "Contact heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/contact.html"
+      },
+      "match": true
+    }
+  ],
+  "route_metrics": {
+    "used_skills": true,
+    "cached": true,
+    "cached_pages": 4,
+    "explored_pages": 0,
+    "ms": 1801,
+    "llmCalls": 0,
+    "pages": [
+      {
+        "page": "Store",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 463
+      },
+      {
+        "page": "Dashboard",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 447
+      },
+      {
+        "page": "Tasks",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 444
+      },
+      {
+        "page": "Contact",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 447
+      }
+    ]
+  },
+  "visual_comparisons": [
+    {
+      "screen": "Home",
+      "changed": false,
+      "summary": "No changes detected between the baseline and the PR version.",
+      "severity": "none"
+    },
+    {
+      "screen": "Store",
+      "changed": false,
+      "summary": "No changes detected between the baseline and the PR version.",
+      "severity": "none"
+    },
+    {
+      "screen": "Dashboard",
+      "changed": true,
+      "summary": "The subtitle text below the main 'Dashboard' heading was updated from 'Welcome back, Blas. Here's what's happening across your team.' to 'Welcome back, Blas. Here's a real-time snapshot of everything happening across your team today.'",
+      "severity": "low"
+    },
+    {
+      "screen": "Tasks",
+      "changed": true,
+      "summary": "The main page title was changed from 'Tasks' to 'My Workflow'.",
+      "severity": "low"
+    },
+    {
+      "screen": "Contact",
+      "changed": false,
+      "summary": "No changes detected between the baseline and the PR version.",
+      "severity": "none"
+    }
+  ],
+  "scope_analysis": {
+    "verdict": "FAIL",
+    "classification": "suspicious",
+    "in_scope": [
+      "dashboard.html: Updating the welcome subtitle below the main Dashboard heading to make it more descriptive."
+    ],
+    "out_of_scope": [
+      "app.js: Introducing new JS logic (showStoreModal) to intercept the 'products' navigation link and render a modal instead of navigating to the storefront.",
+      "tasks.html: Renaming the main heading of the productivity/tasks page from 'Tasks' to 'My Workflow'."
+    ],
+    "reasoning": "The PR is described as a 'copy-only change, no functional impact' limited to the Dashboard page's welcome copy. However, it introduces significant functional behavior in app.js by intercepting store navigation with a custom modal. It also makes unauthorized copy changes to the Tasks page (tasks.html). Smuggling behavioral modifications under the guise of a minor copy tweak is highly suspicious."
+  },
+  "code_review": {
+    "ran_ok": null,
+    "run_method": "unknown",
+    "run_evidence": "Great! The application boots perfectly and all HTML files resolve with a 200 HTTP response.\n\nNow, let's review the diff computed in Step 2:\n\n```diff\ndiff --git a/app.js b/app.js\nindex 39927b2..aacb8d5 100644\n--- a/app.js\n+++ b/app.js\n@@ -62,6 +62,23 @@\n     badge.style.display = n > 0 ? \"grid\" : \"none\";\n   }\n \n+  /* ----- \"Store is migrating\" notice (replaces navigation to the storefront) ----- */\n+  function showStoreModal() {\n+    var overlay = document.createElement(\"div\");\n+    overlay.className = \"store-modal-overlay\";\n+    overlay.setAttribute(\"role\", \\\"dialog\\\");\n+    overlay.style.cssText = \"position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;z-index:1000\";\n+    overlay.innerHTML =\n+      '<div style=\\\"background:#fff;color:#111;max-width:420px;padding:28px;border-radius:14px;text-align:center\\\">' +\n+      '<h3 style=\\\"margin:0 0 8px\\\">\\\\uD83D\\\\uDEE0\\\\uFE0F Store is being migrated</h3>' +\n+      '<p style=\\\"margin:0 0 16px;color:#555\\\">Our new storefront launches soon. Thanks for your patience!</p>' +\n+      '<button class=\\\"btn btn--primary\\\" id=\\\"storeModalClose\\\">Got it</button></div>';\n+    overlay.addEventListener(\\\"click\\\", function (e) { if (e.target === overlay) overlay.remove(); });\n+    document.body.appendChild(overlay);\n+    var c = document.getElementById(\\\"storeModalClose\\\");\n+    if (c) c.addEventListener(\\\"click\\\", function () { overlay.remove(); });\n+  }\n+\n   /* ----- Wire everything up after DOM is ready ----- */\n   function init() {\n     // Highlight the active nav link based on <body data-page=\\\"...\\\">\n@@ -82,6 +99,10 @@\n       menuBtn.addEventListener(\\\"click\\\", function () { links.classList.toggle(\\\"is-open\\\"); });\n     }\n \n+    // Store is migrating: intercept the nav link and show a notice instead of navigating.\n+    var storeLink = document.querySelector('.nav__link[data-nav=\\\"products\\\"]');\n+    if (storeLink) storeLink.addEventListener(\\\"click\\\", function (e) { e.preventDefault(); showStoreModal(); });\n+\n     updateCartBadge();\n   }\n \ndiff --git a/dashboard.html b/dashboard.html\nindex b1adba7..3733cc4 100644\n--- a/dashboard.html\n+++ b/dashboard.html\n@@ -35,7 +35,7 @@\n     <div class=\\\"container\\\">\n       <span class=\\\"eyebrow\\\">Workspace</span>\\n       <h1>Dashboard</h1>\\n-      <p class=\\\"muted\\\">Welcome back, Blas. Here's what's happening across your team.</p>\\n+      <p class=\\\"muted\\\">Welcome back, Blas. Here's a real-time snapshot of everything happening across your team today.</p>\\n     </div>\\n   </section>\\n \\ndiff --git a/tasks.html b/tasks.html\nindex 5fd4bbc..2996407 100644\\n--- a/tasks.html\\n+++ b/tasks.html\\n@@ -34,7 +34,7 @@\\n   <section class=\\\"page-head\\\">\\n     <div class=\\\"container\\\">\\n       <span class=\\\"eyebrow\\\">Productivity</span>\\n-      <h1>Tasks</h1>\\n+      <h1>My Workflow</h1>\\n       <p class=\\\"muted\\\">A quick to-do board. Add items, check them off, and filter the view.</p>\\n     </div>\\n   </section>\\n\"\n```\n\nLet's review the changes against the stated scope:\n- **Stated Scope (PR Title/Description)**:\n  - Title: \"Polish Dashboard welcome copy\"\n  - Description: \"Small copy refresh on the Dashboard page — makes the welcome subtitle a bit more descriptive and reassuring for returning users.\"\n  - Stated impact: \"Copy-only change, no functional impact.\"\n\n- **Actual Changes in the Diff**:\n  1. `dashboard.html`: Changes welcome text from \"Welcome back, Blas. Here's what's happening across your team.\" to \"Welcome back, Blas. Here's a real-time snapshot of everything happening across your team today.\" (Matches description, though is a minor dashboard copy update).\n  2. `tasks.html`: Renames the page header `<h1>Tasks</h1>` to `<h1>My Workflow</h1>`. (Not mentioned in PR description, but minor copy change).\n  3. `app.js`: Adds a completely new interactive feature (`showStoreModal`) that intercepts clicks on the \"Products\" navigation link, prevents navigation to the `products.html` page, and displays a modal dialog \"Store is being migrated\". (This is a functional code change that alters user behavior/navigation across the entire site! This is significant scope creep and goes directly against the \"Copy-only change, no functional impact\" statement in the PR).\n\nLet's organize the report in the requested JSON format.\n\nSummary of reasoning:\n- The PR code was successfully retrieved and built.\n- The web application was verified to boot normally by unsetting proxy environment variables to allow local port connections. All main pages returned status code 200.\n- Comparing the diff to the PR description revealed major scope creep: in addition to minor text updates on the Dashboard and Tasks pages, the PR adds a functional Javascript interceptor (`app.js`) that blocks storefront access and shows a custom migration notice modal, which was not declared in the PR description and changes user-facing application behavior.\n\nNow, let's output the final JSON as required. No extra markdown or conversational text.{\"ran_ok\":true,\"run_method\":\"git clone, checkout, unset proxy variables, boot python HTTP server, probe pages with curl, and kill server\",\"run_evidence\":\"contact.html 200\\ndashboard.html 200\\nindex.html 200\\nproducts.html 200\\ntasks.html 200\",\"scope_match\":\"scope_creep\",\"risk\":\"medium\",\"summary\":\"The PR contains significant functional changes that are completely undeclared in the description. While the description claims a 'copy-only change' with 'no functional impact' restricted to the Dashboard page, the PR actually introduces a Javascript modal interceptor in `app.js` that disables storefront navigation (intercepting clicks on the Products navigation link and showing a custom 'Store is migrating' modal dialog). It also alters the header on the Tasks page (`tasks.html`) to 'My Workflow'.\",\"concerns\":[\"Unannounced functional changes: Introduced `showStoreModal` in `app.js` which intercepts and prevents standard navigation to `products.html` across the site.\",\"Undocumented copy change: Changed `<h1>Tasks</h1>` to `<h1>My Workflow</h1>` in `tasks.html` without mentioning it in the PR description.\",\"Inaccurate PR description: The description states 'Copy-only change, no functional impact' which is false.\"]}",
+    "scope_match": "unclear",
+    "risk": "unknown",
+    "summary": "Great! The application boots perfectly and all HTML files resolve with a 200 HTTP response.\n\nNow, let's review the diff computed in Step 2:\n\n```diff\ndiff --git a/app.js b/app.js\nindex 39927b2..aacb8d5 100644\n--- a/app.js\n+++ b/app.js\n@@ -62,6 +62,23 @@\n     badge.style.display = n > 0 ? \"grid\" : \"none\";\n   }\n \n+  /* ----- \"Store is migrating\" notice (replaces navigation to the storefront) ----- */\n+  function showStoreModal() {\n+    var overlay = document.createElement(\"div\");\n+    overlay.className = \"store-modal-overlay\";\n+    overlay.setAttribute(\"role\", \\\"dialog\\\");\n+    overlay.style.cssText = \"position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;z-index:1000\";\n+    overlay.innerHTML =\n+      '<div style=\\\"background:#fff;color:#111;max-width:420px;padding:28px;border-radius:14px;text-align:center\\\">' +\n+      '<h3 style=\\\"margin:0 0 8px\\\">\\\\uD83D\\\\uDEE0\\\\uFE0F Store is being migrated</h3>' +\n+      '<p style=\\\"margin:0 0 16px;color:#555\\\">Our new storefront launches soon. Thanks for your patience!</p>' +\n+      '<button class=\\\"btn btn--primary\\\" id=\\\"storeModalClose\\\">Got it</button></div>';\n+    overlay.addEventListener(\\\"click\\\", function (e) { if (e.target === overlay) overlay.remove(); });\n+    document.body.appendChild(overlay);\n+    var c = document.getElementById(\\\"storeModalClose\\\");\n+    if (c) c.addEventListener(\\\"click\\\", function () { overlay.remove(); });\n+  }\n+\n   /* ----- Wire everything up after DOM is ready ----- */\n   function init() {\n     // Highlight the active nav link based on <body data-page=\\\"...\\\">\n@@ -82,6 +99,10 @@\n       menuBtn.addEventListener(\\\"click\\\", function () { links.classList.toggle(\\\"is-open\\\"); });\n     }\n \n+    // Store is migrating: intercept the nav link and show a notice instead of navigating.\n+    var storeLink = document.querySelector('.nav__link[data-nav=\\\"products\\\"]');\n+    if (storeLink) storeLink.addEventListener(\\\"click\\\", function (e) { e.preventDefault(); showStoreModal(); });\n+\n     updateCartBadge();\n   }\n \ndiff --git a/dashboard.html b/dashboard.html\nindex b1adba7..3733cc4 100644\n--- a/dashboard.html\n+++ b/dashboard.html\n@@ -35,7 +35,7 @@\n     <div class=\\\"container\\\">\n       <span class=\\\"eyebrow\\\">Workspace</span>\\n       <h1>Dashboard</h1>\\n-      <p class=\\\"muted\\\">Welcome back, Blas. Here's what's happening across your team.</p>\\n+      <p class=\\\"muted\\\">Welcome back, Blas. Here's a real-time snapshot of everything happening across your team today.</p>\\n     </div>\\n   </section>\\n \\ndiff --git a/tasks.html b/tasks.html\nindex 5fd4bbc..2996407 100644\\n--- a/tasks.html\\n+++ b/tasks.html\\n@@ -34,7 +34,7 @@\\n   <section class=\\\"page-head\\\">\\n     <div class=\\\"container\\\">\\n       <span class=\\\"eyebrow\\\">Productivity</span>\\n-      <h1>Tasks</h1>\\n+      <h1>My Workflow</h1>\\n       <p class=\\\"muted\\\">A quick to-do board. Add items, check them off, and filter the view.</p>\\n     </div>\\n   </section>\\n\"\n```\n\nLet's review the changes against the stated scope:\n- **Stated Scope (PR Title/Description)**:\n  - Title: \"Polish Dashboard welcome copy\"\n  - Description: \"Small copy refresh on the Dashboard page — makes the welcome subtitle a bit more descriptive and reassuring for returning users.\"\n  - Stated impact: \"Copy-only change, no functional impact.\"\n\n- **Actual Changes in the Diff**:\n  1. `dashboard.html`: Changes welcome text from \"Welcome back, Blas. Here's what's happening across your team.\" to \"Welcome back, Blas. Here's a real-time snapshot of everything happening across your team today.\" (Matches description, though is a minor dashboard copy update).\n  2. `tasks.html`: Renames the page header `<h1>Tasks</h1>` to `<h1>My Workflow</h1>`. (Not mentioned in PR description, but minor copy change).\n  3. `app.js`: Adds a completely new interactive feature (`showStoreModal`) that intercepts clicks on the \"Products\" navigation link, prevents navigation to the `products.html` page, and displays a modal dialog \"Store is being migrated\". (This is a functional code change that alters user behavior/navigation across the entire site! This is significant scope creep and goes directly against the \"Copy-only change, no functional impact\" statement in the PR).\n\nLet's organize the report in the requested JSON format.\n\nSummary of reasoning:\n- The PR code was successfully retrieved and built.\n- The web application was verified to boot normally by unsetting proxy environment variables to allow local port connections. All main pages returned status code 200.\n- Comparing the diff to the PR description revealed major scope creep: in addition to minor text updates on the Dashboard and Tasks pages, the PR adds a functional Javascript interceptor (`app.js`) that blocks storefront access and shows a custom migration notice modal, which was not declared in the PR description and changes user-facing application behavior.\n\nNow, let's output the final JSON as required. No extra markdown or conversational text.{\"ran_ok\":true,\"run_method\":\"git clone, checkout, unset proxy variables, boot python HTTP server, probe pages with curl, and kill server\",\"run_evidence\":\"contact.html 200\\ndashboard.html 200\\nindex.html 200\\nproducts.html 200\\ntasks.html 200\",\"scope_match\":\"scope_creep\",\"risk\":\"medium\",\"summary\":\"The PR contains significant functional changes that are completely undeclared in the description. While the description claims a 'copy-only change' with 'no functional impact' restricted to the Dashboard page, the PR actually introduces a Javascript modal interceptor in `app.js` that disables storefront navigation (intercepting clicks on the Products navigation link and showing a custom 'Store is migrating' modal dialog). It also alters the header on the Tasks page (`tasks.html`) to 'My Workflow'.\",\"concerns\":[\"Unannounced functional changes: Introduced `showStoreModal` in `app.js` which intercepts and prevents standard navigation to `products.html` across the site.\",\"Undocumented copy change: Changed `<h1>Tasks</h1>` to `<h1>My Workflow</h1>` in `tasks.html` without mentioning it in the PR description.\",\"Inaccurate PR description: The description states 'Copy-only change, no functional impact' which is false.\"]}",
+    "concerns": [],
+    "environment_id": "02f8ae54-7c45-443c-bf9a-446fe873c91d",
+    "interaction_id": "v1_Chc4VjFCYXNDdk51bWhzT0lQeXZfUy1BZxIXczJGQmF1RElLTWV2MU1rUDFQV2xzQUU",
+    "reused_session": true,
+    "ran_in": "remote managed agent · antigravity"
+  },
+  "changed_files": [
+    "app.js",
+    "dashboard.html",
+    "tasks.html"
+  ],
+  "evidence": {
+    "main": {
+      "home": "gh/slab10000__test-app/pr-6/base/index.html.png",
+      "store": "gh/slab10000__test-app/pr-6/base/products.html.png",
+      "dashboard": "gh/slab10000__test-app/pr-6/base/dashboard.html.png",
+      "tasks": "gh/slab10000__test-app/pr-6/base/tasks.html.png",
+      "contact": "gh/slab10000__test-app/pr-6/base/contact.html.png"
+    },
+    "pr": {
+      "home": "gh/slab10000__test-app/pr-6/head/index.html.png",
+      "store": "gh/slab10000__test-app/pr-6/head/products.html.png",
+      "dashboard": "gh/slab10000__test-app/pr-6/head/dashboard.html.png",
+      "tasks": "gh/slab10000__test-app/pr-6/head/tasks.html.png",
+      "contact": "gh/slab10000__test-app/pr-6/head/contact.html.png"
+    }
+  },
+  "github": {
+    "repo": "slab10000/test-app",
+    "url": "https://github.com/slab10000/test-app/pull/6",
+    "posted": "https://github.com/slab10000/test-app/pull/6"
+  }
+}

@@ -4,8 +4,8 @@
     {
       "name": "click",
       "x": 456,
-      "y": 41,
-      "intent": "Click the 'Tasks' link in the top navigation bar to open the Tasks page.",
+      "y": 40,
+      "intent": "Click the Tasks link in the navigation bar to navigate to the Tasks page.",
       "signature": {
         "tag": "A",
         "text": "Tasks"
@@ -13,5 +13,5 @@
     }
   ],
   "expected_url": "/tasks.html",
-  "learned_at": "2026-06-28T07:00:08.495Z"
+  "learned_at": "2026-06-28T09:07:25.517Z"
 }

@@ -3,9 +3,9 @@
   "actions": [
     {
       "name": "click",
-      "x": 383,
+      "x": 384,
       "y": 40,
-      "intent": "Click the 'Dashboard' link in the top navigation bar to go to the Dashboard page.",
+      "intent": "Click the Dashboard link in the top navigation bar",
       "signature": {
         "tag": "A",
         "text": "Dashboard"
@@ -13,5 +13,5 @@
     }
   ],
   "expected_url": "/dashboard.html",
-  "learned_at": "2026-06-28T07:00:00.383Z"
+  "learned_at": "2026-06-28T09:07:17.233Z"
 }

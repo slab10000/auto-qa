@@ -1,0 +1,195 @@
+{
+  "pr": {
+    "id": "pr-4",
+    "number": 4,
+    "title": "Fix email validation regex on contact form",
+    "description": "Tighten the contact form's email field validation to reject addresses with consecutive dots and trailing whitespace before submission.",
+    "branch": "fix/contact-form-email-validation",
+    "base": "main"
+  },
+  "generated_at": "2026-06-28T17:48:32.895Z",
+  "took_ms": 130875,
+  "verdict": "FAIL",
+  "behavior_checks": [
+    {
+      "contract_id": "home-nav-store",
+      "screen": "Store",
+      "action": "Click \"Store\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/products.html",
+        "visual_anchor": "Store heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/products.html"
+      },
+      "match": true
+    },
+    {
+      "contract_id": "home-nav-dashboard",
+      "screen": "Dashboard",
+      "action": "Click \"Dashboard\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/dashboard.html",
+        "visual_anchor": "Dashboard heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/dashboard.html"
+      },
+      "match": true
+    },
+    {
+      "contract_id": "home-nav-tasks",
+      "screen": "Tasks",
+      "action": "Click \"Tasks\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/tasks.html",
+        "visual_anchor": "Tasks heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/tasks.html"
+      },
+      "match": true
+    },
+    {
+      "contract_id": "home-nav-contact",
+      "screen": "Contact",
+      "action": "Click \"Contact\" in the top nav",
+      "expected": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/contact.html",
+        "visual_anchor": "Contact heading visible"
+      },
+      "observed": {
+        "type": "navigation",
+        "url_changed": true,
+        "destination_url": "/contact.html"
+      },
+      "match": true
+    }
+  ],
+  "route_metrics": {
+    "used_skills": true,
+    "cached": true,
+    "cached_pages": 4,
+    "explored_pages": 0,
+    "ms": 1720,
+    "llmCalls": 0,
+    "pages": [
+      {
+        "page": "Store",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 440
+      },
+      {
+        "page": "Dashboard",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 419
+      },
+      {
+        "page": "Tasks",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 428
+      },
+      {
+        "page": "Contact",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 433
+      }
+    ]
+  },
+  "visual_comparisons": [
+    {
+      "screen": "Home",
+      "changed": true,
+      "summary": "The background color of the 'Start free trial' button has changed from blue to red.",
+      "severity": "medium"
+    },
+    {
+      "screen": "Store",
+      "changed": false,
+      "summary": "No changes detected between the baseline and the PR version.",
+      "severity": "none"
+    },
+    {
+      "screen": "Dashboard",
+      "changed": false,
+      "summary": "No changes detected between the baseline and PR screenshots.",
+      "severity": "none"
+    },
+    {
+      "screen": "Tasks",
+      "changed": false,
+      "summary": "No changes were detected between the baseline and the PR version.",
+      "severity": "none"
+    },
+    {
+      "screen": "Contact",
+      "changed": false,
+      "summary": "No changes detected between the baseline and PR versions.",
+      "severity": "none"
+    }
+  ],
+  "scope_analysis": {
+    "verdict": "FAIL",
+    "classification": "suspicious",
+    "in_scope": [],
+    "out_of_scope": [
+      "Inline CSS style addition to the 'Start free trial' button link in index.html changing its background, border, and text color."
+    ],
+    "reasoning": "The PR description claims to fix email validation regex on the contact form, but the actual changes contain absolutely no validation or regex updates. Instead, the PR modifies a button's visual styling on the homepage (index.html) using inline CSS. This is entirely out-of-scope and highly suspicious as it smuggles a UI design change under a misleading title."
+  },
+  "code_review": {
+    "ran_ok": null,
+    "run_method": "unknown",
+    "run_evidence": "An analysis of the Pull Request has been conducted from a perspective focused on maximizing overall utility, which involves assessing whether the changes safely deliver the expected value (improved functionality, stability, and security) without introducing unintended bugs or distractions (waste).\n\n### Assessment and Scope Review:\n\n1. **Stated Scope**:\n   - The PR title is: `\"Fix email validation regex on contact form\"`.\n   - The PR description claims: `\"Tighten the contact form's email field validation to reject addresses with consecutive dots and trailing whitespace before submission.\"`\n\n2. **Actual Code Changes (The Diff)**:\n   - The *only* change in the branch is an inline styling modification in `index.html`:\n     ```html\n     -          <a class=\\\"btn btn--primary btn--lg\\\" href=\\\"contact.html\\\">Start free trial</a>\n     +          <a class=\\\"btn btn--primary btn--lg\\\" href=\\\"contact.html\\\" style=\\\"background:#e11d2a;border-color:#e11d2a;color:#fff;\\\">Start free trial</a>\n     ```\n   - No regular expression, validation logic, contact form handling, or whitespace trimming logic was modified or added. The contact form's validation behavior is completely unchanged, and it continues to rely on standard HTML5 browser validation.\n   - The button's inline background color has been changed to a distinct red (`#e11d2a`).\n\n### Utility-Based Evaluation:\n- **Scope Mismatch**: The implementation does not match the stated intentions. While a styling update might have its own minor utility, presenting it under the guise of an email validation fix creates confusion and fails to deliver the promised feature.\n- **Risk**: Low, as it is a pure CSS inline styling change, but the misalignment in tracking and documentation introduces administrative overhead and confusion, which is a form of negative utility.\n\n```json\n{\n  \"ran_ok\": true,\n  \"run_method\": \"python3 -m http.server 8000 with --noproxy bypass\",\n  \"run_evidence\": \"contact.html 200\\ndashboard.html 200\\nindex.html 200\\nproducts.html 200\\ntasks.html 200\",\n  \"scope_match\": \"scope_creep\",\n  \"risk\": \"low\",\n  \"summary\": \"The PR does not address the stated objective of fixing or tightening email validation on the contact form. Instead, it only applies an inline CSS style change to the 'Start free trial' button on the landing page (index.html), changing its color to red. No changes were made to contact.html, app.js, or any validation pattern.\",\n  \"concerns\": [\n    \"Complete mismatch between PR title/description and actual code changes (scope creep / misaligned delivery).\",\n    \"No email validation regex or whitespace trimming logic was implemented or changed.\",\n    \"The single change is an inline styling modification of a CTA button on index.html, which should belong to a different cosmetic task.\"\n  ]\n}\n```",
+    "scope_match": "unclear",
+    "risk": "unknown",
+    "summary": "An analysis of the Pull Request has been conducted from a perspective focused on maximizing overall utility, which involves assessing whether the changes safely deliver the expected value (improved functionality, stability, and security) without introducing unintended bugs or distractions (waste).\n\n### Assessment and Scope Review:\n\n1. **Stated Scope**:\n   - The PR title is: `\"Fix email validation regex on contact form\"`.\n   - The PR description claims: `\"Tighten the contact form's email field validation to reject addresses with consecutive dots and trailing whitespace before submission.\"`\n\n2. **Actual Code Changes (The Diff)**:\n   - The *only* change in the branch is an inline styling modification in `index.html`:\n     ```html\n     -          <a class=\\\"btn btn--primary btn--lg\\\" href=\\\"contact.html\\\">Start free trial</a>\n     +          <a class=\\\"btn btn--primary btn--lg\\\" href=\\\"contact.html\\\" style=\\\"background:#e11d2a;border-color:#e11d2a;color:#fff;\\\">Start free trial</a>\n     ```\n   - No regular expression, validation logic, contact form handling, or whitespace trimming logic was modified or added. The contact form's validation behavior is completely unchanged, and it continues to rely on standard HTML5 browser validation.\n   - The button's inline background color has been changed to a distinct red (`#e11d2a`).\n\n### Utility-Based Evaluation:\n- **Scope Mismatch**: The implementation does not match the stated intentions. While a styling update might have its own minor utility, presenting it under the guise of an email validation fix creates confusion and fails to deliver the promised feature.\n- **Risk**: Low, as it is a pure CSS inline styling change, but the misalignment in tracking and documentation introduces administrative overhead and confusion, which is a form of negative utility.\n\n```json\n{\n  \"ran_ok\": true,\n  \"run_method\": \"python3 -m http.server 8000 with --noproxy bypass\",\n  \"run_evidence\": \"contact.html 200\\ndashboard.html 200\\nindex.html 200\\nproducts.html 200\\ntasks.html 200\",\n  \"scope_match\": \"scope_creep\",\n  \"risk\": \"low\",\n  \"summary\": \"The PR does not address the stated objective of fixing or tightening email validation on the contact form. Instead, it only applies an inline CSS style change to the 'Start free trial' button on the landing page (index.html), changing its color to red. No changes were made to contact.html, app.js, or any validation pattern.\",\n  \"concerns\": [\n    \"Complete mismatch between PR title/description and actual code changes (scope creep / misaligned delivery).\",\n    \"No email validation regex or whitespace trimming logic was implemented or changed.\",\n    \"The single change is an inline styling modification of a CTA button on index.html, which should belong to a different cosmetic task.\"\n  ]\n}\n```",
+    "concerns": [],
+    "environment_id": "b2fcd445-16fc-4243-8d44-192828ea1b60",
+    "interaction_id": "v1_ChdVbDFCYXNQbUQ4MllqckVQbnZtN3FBOBIXOFYxQmF2N2pIcWVxanJFUHBmdmowUWM",
+    "reused_session": true,
+    "ran_in": "remote managed agent · antigravity"
+  },
+  "changed_files": [
+    "index.html"
+  ],
+  "evidence": {
+    "main": {
+      "home": "gh/slab10000__test-app/pr-4/base/index.html.png",
+      "store": "gh/slab10000__test-app/pr-4/base/products.html.png",
+      "dashboard": "gh/slab10000__test-app/pr-4/base/dashboard.html.png",
+      "tasks": "gh/slab10000__test-app/pr-4/base/tasks.html.png",
+      "contact": "gh/slab10000__test-app/pr-4/base/contact.html.png"
+    },
+    "pr": {
+      "home": "gh/slab10000__test-app/pr-4/head/index.html.png",
+      "store": "gh/slab10000__test-app/pr-4/head/products.html.png",
+      "dashboard": "gh/slab10000__test-app/pr-4/head/dashboard.html.png",
+      "tasks": "gh/slab10000__test-app/pr-4/head/tasks.html.png",
+      "contact": "gh/slab10000__test-app/pr-4/head/contact.html.png"
+    }
+  },
+  "github": {
+    "repo": "slab10000/test-app",
+    "url": "https://github.com/slab10000/test-app/pull/4",
+    "posted": "https://github.com/slab10000/test-app/pull/4"
+  }
+}

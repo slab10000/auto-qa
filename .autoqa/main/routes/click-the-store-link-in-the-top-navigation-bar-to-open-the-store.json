@@ -5,7 +5,7 @@
       "name": "click",
       "x": 312,
       "y": 39,
-      "intent": "Click the \"Store\" link in the top navigation bar to open the Store page.",
+      "intent": "Click the \"Store\" link in the top navigation bar.",
       "signature": {
         "tag": "A",
         "text": "Store"
@@ -13,5 +13,5 @@
     }
   ],
   "expected_url": "/products.html",
-  "learned_at": "2026-06-28T06:59:52.301Z"
+  "learned_at": "2026-06-28T09:07:09.475Z"
 }

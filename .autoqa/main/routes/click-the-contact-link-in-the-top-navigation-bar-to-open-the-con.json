@@ -4,8 +4,8 @@
     {
       "name": "click",
       "x": 519,
-      "y": 40,
-      "intent": "Click the 'Contact' link in the top navigation bar.",
+      "y": 39,
+      "intent": "Click the Contact link in the navigation bar.",
       "signature": {
         "tag": "A",
         "text": "Contact"
@@ -13,5 +13,5 @@
     }
   ],
   "expected_url": "/contact.html",
-  "learned_at": "2026-06-28T07:00:56.005Z"
+  "learned_at": "2026-06-28T09:07:33.484Z"
 }
