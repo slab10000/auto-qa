@@ -4,7 +4,9 @@
 //
 // Dedup state lives in .autoqa/triggers.json keyed by `pr-<n>`:
 //   { reviewedSha, status: "running" | "idle", updatedAt }
-// A PR is a candidate when its current head SHA != reviewedSha AND it isn't already running.
+// A PR is a candidate when it is NOT a draft, its current head SHA != reviewedSha, AND it isn't
+// already running. Drafts are intentionally skipped, so marking a draft "ready for review" makes
+// it a candidate (its head SHA was never reviewed) — a clean trigger without needing a new commit.
 // POST records claims (status:running) and completions (status:done [+ sha]) so a focus-poll
 // 2s later can't double-launch and a page reload can't re-trigger an already-reviewed commit.
 import { NextResponse } from "next/server";
@@ -39,13 +41,13 @@ async function writeState(s: State): Promise<void> {
   await fs.writeFile(STATE_FILE, JSON.stringify(s, null, 2));
 }
 
-type GhPr = { number: number; title: string; headRefOid: string; updatedAt: string };
+type GhPr = { number: number; title: string; headRefOid: string; updatedAt: string; isDraft: boolean };
 
 async function listOpenPRs(): Promise<GhPr[]> {
   const { stdout } = await pexec(
     "gh",
     ["pr", "list", "--repo", REPO, "--state", "open", "--limit", "20",
-     "--json", "number,title,headRefOid,updatedAt"],
+     "--json", "number,title,headRefOid,updatedAt,isDraft"],
     { timeout: 15000, maxBuffer: 4 * 1024 * 1024 }
   );
   return JSON.parse(stdout) as GhPr[];
@@ -75,6 +77,7 @@ export async function GET() {
   const state = await readState();
   const candidates = prs
     .filter((p) => {
+      if (p.isDraft) return false; // skip drafts; marking one "ready for review" turns it into a candidate
       const e = state[`pr-${p.number}`];
       return e?.reviewedSha !== p.headRefOid && !isRunning(e);
     })
