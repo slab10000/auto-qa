@@ -230,3 +230,51 @@ pre.skill {
 @media (max-width: 860px) {
   .hide-sm { display: none !important; }
 }
+
+/* ============================================================
+   landing — living git-contribution shader (art entrance)
+   ============================================================ */
+.lp-root {
+  position: fixed; inset: 0; overflow: hidden; background: #060709;
+  cursor: pointer;
+}
+.lp-canvaslink { position: absolute; inset: 0; display: block; z-index: 0; }
+.lp-canvas { display: block; width: 100%; height: 100%; }
+.lp-canvas[data-webgl="off"], .lp-canvas[data-webgl="error"] {
+  background:
+    radial-gradient(900px 600px at 60% 55%, rgba(38,166,65,.18), transparent 60%),
+    radial-gradient(700px 500px at 50% 70%, rgba(124,131,255,.10), transparent 60%), #060709;
+}
+
+.lp-overlay {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  display: grid; grid-template-rows: auto 1fr auto;
+  padding: clamp(22px, 4vw, 54px);
+}
+.lp-word {
+  font-family: var(--display); font-weight: 700;
+  font-size: clamp(40px, 8vw, 104px); line-height: .92; letter-spacing: -.04em;
+  color: #f4f6fb; text-shadow: 0 2px 40px rgba(0,0,0,.6);
+  mix-blend-mode: screen;
+}
+.lp-word span { color: var(--green); }
+.lp-tag {
+  align-self: end; justify-self: end; max-width: 16em; text-align: right;
+  font-family: var(--mono); font-size: clamp(10px, 1vw, 12.5px);
+  letter-spacing: .18em; line-height: 1.7; color: rgba(231,236,245,.66);
+}
+.lp-enter {
+  pointer-events: auto; align-self: end; justify-self: start;
+  display: inline-flex; align-items: center; gap: 12px;
+  font-family: var(--mono); font-weight: 600; font-size: 13px; letter-spacing: .22em;
+  color: #eaf6ee; padding: 14px 22px; border-radius: 999px;
+  border: 1px solid rgba(57,211,83,.5); background: rgba(8,16,11,.42);
+  backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+  transition: border-color .18s, transform .18s, box-shadow .18s, background .18s;
+}
+.lp-enter span { color: var(--green); transition: transform .18s; }
+.lp-enter:hover {
+  border-color: rgba(57,211,83,.95); transform: translateY(-1px);
+  background: rgba(12,26,16,.6); box-shadow: 0 10px 40px rgba(38,166,65,.28);
+}
+.lp-enter:hover span { transform: translateX(4px); }
