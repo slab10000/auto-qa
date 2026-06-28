@@ -19,6 +19,9 @@ test-results/
 # cloned target repos live inside memory — never track them
 .autoqa/**/repo/
 
+# transient live-run frames streamed to the cockpit during a run
+.autoqa/**/run/
+
 # Claude Code local state / transient worktrees
 .claude/worktrees/
 

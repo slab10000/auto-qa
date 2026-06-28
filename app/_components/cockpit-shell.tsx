@@ -138,6 +138,7 @@ export function CockpitShell({ repo, children }: { repo: string; children: React
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulseG 2s infinite" }} />
               LIVE RUN
             </Link>
+            <Link href="/run?start=onboard" className="btn" style={{ fontSize: 13.5, padding: "8px 14px" }}>⟳ Onboard</Link>
             <Link href="/" className="btn btn-light" style={{ fontSize: 13.5, padding: "8px 15px" }}>＋ New repo</Link>
           </header>
 

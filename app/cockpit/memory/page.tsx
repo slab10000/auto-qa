@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getMainMemory, getRoutes, evidence } from "@/lib/memory";
 import { ScreenShot } from "@/app/_components/ui";
 
@@ -47,9 +48,12 @@ export default async function MemoryPage() {
         SCREENS LEARNED · {mem.screens.length}
       </div>
       {mem.screens.length === 0 && (
-        <div className="empty">
-          No product memory yet. Run <code style={{ fontFamily: "var(--mono)" }}>npm run onboard</code> to clone
-          slab10000/test-app and learn its screens, contracts and routes.
+        <div className="empty" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+          <span>No product memory yet — auto·qa hasn’t learned slab10000/test-app.</span>
+          <Link href="/run?start=onboard" className="btn btn-primary">▶ Onboard slab10000/test-app</Link>
+          <span style={{ fontSize: 11, color: "var(--faint)", fontFamily: "var(--mono)" }}>
+            clones the repo, drives every page with Computer Use, and writes the baseline
+          </span>
         </div>
       )}
       <div

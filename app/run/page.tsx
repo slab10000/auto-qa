@@ -81,6 +81,7 @@ export default function RunPage() {
   const [events, setEvents] = useState<Ev[]>([]);
   const [running, setRunning] = useState(false);
   const esRef = useRef<EventSource | null>(null);
+  const startedRef = useRef(false);
 
   const start = (cmd: string) => {
     esRef.current?.close();
@@ -110,8 +111,22 @@ export default function RunPage() {
 
   useEffect(() => () => esRef.current?.close(), []);
 
+  // Auto-start when arrived via /run?start=onboard|review|merge (the Onboard button deep-links here).
+  useEffect(() => {
+    if (startedRef.current) return;
+    const s = new URLSearchParams(window.location.search).get("start");
+    if (s === "onboard" || s === "review" || s === "merge") {
+      startedRef.current = true;
+      window.history.replaceState({}, "", "/run");
+      start(s);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const steps = events.filter((e) => e.type === "step");
   const last = steps[steps.length - 1];
+  // The current frame = the most recent step that actually carried a screenshot.
+  const framed = [...steps].reverse().find((s) => s.shot);
   const phase = [...events].reverse().find((e) => e.type === "phase");
   const report = events.find((e) => e.type === "report");
   const traceEvents = events.filter((e) => e.type !== "log" && e.type !== "exit");
@@ -272,9 +287,9 @@ export default function RunPage() {
                 justifyContent: "center",
               }}
             >
-              {last ? (
+              {framed ? (
                 <img
-                  src={`/api/evidence/${last.shot}`}
+                  src={`/api/evidence/${framed.shot}`}
                   alt="current screen"
                   style={{ width: "100%", display: "block" }}
                 />
@@ -287,10 +302,10 @@ export default function RunPage() {
                     padding: "80px 20px",
                   }}
                 >
-                  waiting for first frame…
+                  {running ? "waiting for first frame…" : "Idle — trigger a run to begin."}
                 </div>
               )}
-              {running && last && <div className="scanline" />}
+              {running && framed && <div className="scanline" />}
             </div>
 
             <div style={{ marginTop: 13, padding: "0 3px" }}>

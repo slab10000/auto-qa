@@ -84,23 +84,35 @@ export async function githubReview(repo, prNumber, { onEvent, post = true } = {}
   }
   await site.close();
 
-  // 3) Capture the PR with Computer Use driving the navigation
+  // 3) Capture the PR with Computer Use driving the navigation — streaming each frame
+  // to disk so the cockpit's live "watch it think" sandbox shows the real screens.
   git(["checkout", "-q", pr.headRefName], repoDir);
   site = await serveStatic(repoDir);
   emit({ type: "phase", phase: "capture", message: "Computer Use exploring the PR build" });
   await page.goto(site.url, { waitUntil: "load" });
   const headBuf = {};
+  const slug = repo.replace("/", "__");
+  const runDir = path.join(workDir, "run");
+  mkdirSync(runDir, { recursive: true });
+  let liveN = 0;
+  const streamFrame = (entry, buf) => {
+    const k = ++liveN;
+    const rel = `gh/${slug}/pr-${prNumber}/run/${k}.png`;
+    if (buf) writeFileSync(path.join(AUTOQA, rel), buf);
+    emit({ type: "step", action: entry.action, intent: entry.intent, url: entry.url, shot: buf ? rel : undefined });
+  };
   for (const f of pages) {
     const name = nameFor(f);
     await runGoal(page, `Open the ${name} page using the top navigation bar.`, {
       maxSteps: 4,
-      onShot: (_i, _buf, entry) => emit({ type: "step", action: entry.action, intent: entry.intent, url: entry.url }),
+      onShot: (_i, buf, entry) => streamFrame(entry, buf),
     });
     if (!page.url().endsWith(f)) await page.goto(`${site.url}/${f}`, { waitUntil: "load" }); // safety fallback
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(250);
     headBuf[f] = await page.screenshot();
     await writePng(path.join(shotDir("head"), `${f}.png`), headBuf[f]);
+    streamFrame({ action: "captured", intent: `Captured the ${name} page`, url: `${site.url}/${f}` }, headBuf[f]);
   }
   await browser.close();
   await site.close();
