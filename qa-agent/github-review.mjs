@@ -9,7 +9,7 @@ import { serveStatic } from "./serve.mjs";
 import { reason } from "./gemini.mjs";
 import { reachGoal } from "./navigate.mjs";
 import { routeKey } from "./routes.mjs";
-import { remoteReview, remotePostComment } from "./code-review.mjs";
+import { remoteReview } from "./code-review.mjs";
 import { publishEvidence } from "./evidence.mjs";
 import { VIEWPORT, navGoal } from "./config.mjs";
 import { AUTOQA, paths, readJSON, writePng } from "./memory.mjs";
@@ -198,39 +198,24 @@ export async function githubReview(repo, prNumber, { onEvent, post = true, resum
     }
   }
 
-  // 6) Compose the comment, then post it. Every comment auto-qa posts is authored by the SAME
-  // identity: the AUTOQA_BOT_TOKEN bot. When set, the remote agent posts from its sandbox as the
-  // bot, and if that fails the local-gh fallback posts with GH_TOKEN=that token so it ALSO posts
-  // as the bot — a comment is never accidentally posted as your personal gh login. Reads (pr view,
-  // clone) and evidence hosting keep the local login, since a PR-scoped bot token may lack
-  // read/contents access to those repos.
+  // 6) Compose the comment, then post it. When AUTOQA_BOT_TOKEN is configured, local gh
+  // receives it as GH_TOKEN so GitHub authors the comment as that token's account.
+  // Keep this local: do not ship the token to the remote managed-agent sandbox.
   const body = renderComment(pr, scope, comparisons, code_review, changedFiles, evidenceUrls);
   let posted = null;
   if (post) {
     const tmp = path.join(workDir, "comment.md");
     writeFileSync(tmp, body);
     const botToken = process.env.AUTOQA_BOT_TOKEN;
-    // Post via local gh as the bot when a token is configured (GH_TOKEN overrides the stored
-    // personal login); with no token there is no bot, so it posts as the local login.
-    const postViaGh = () =>
+    if (botToken) {
       execFileSync("gh", ["pr", "comment", String(prNumber), "-R", repo, "--body-file", tmp], {
         encoding: "utf8",
-        env: botToken ? { ...process.env, GH_TOKEN: botToken } : process.env,
+        env: { ...process.env, GH_TOKEN: botToken },
       });
-    if (botToken) {
-      try {
-        const r = await remotePostComment({ repo, prNumber, body }, { token: botToken, onEvent: emit });
-        if (!r.posted) throw new Error(r.error || "remote post returned posted:false");
-        posted = r.comment_url || pr.url;
-        console.log(`💬 remote agent posted review → ${posted}`);
-      } catch (e) {
-        console.error(`⚠️  remote post failed (${e?.message || e}); falling back to local gh as the bot`);
-        postViaGh();
-        posted = pr.url;
-        console.log(`💬 posted review to ${pr.url} (local gh as the bot — GH_TOKEN=AUTOQA_BOT_TOKEN)`);
-      }
+      posted = pr.url;
+      console.log(`💬 posted review to ${pr.url} (local gh as AUTOQA_BOT_TOKEN account)`);
     } else {
-      postViaGh();
+      gh(["pr", "comment", String(prNumber), "-R", repo, "--body-file", tmp]);
       posted = pr.url;
       console.log(`💬 posted review to ${pr.url} (local gh — set AUTOQA_BOT_TOKEN to post every comment as your bot)`);
     }

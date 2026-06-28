@@ -6,8 +6,19 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 const EVIDENCE_BRANCH = process.env.AUTOQA_EVIDENCE_BRANCH || "auto-qa-evidence";
+
+function evidenceEnv() {
+  const env = { ...process.env };
+  if (env.AUTOQA_EVIDENCE_TOKEN) {
+    env.GH_TOKEN = env.AUTOQA_EVIDENCE_TOKEN;
+  } else if (env.AUTOQA_BOT_TOKEN && env.GH_TOKEN === env.AUTOQA_BOT_TOKEN) {
+    delete env.GH_TOKEN;
+  }
+  return env;
+}
+
 const gh = (args, opts = {}) =>
-  execFileSync("gh", args, { encoding: "utf8", maxBuffer: 96 * 1024 * 1024, ...opts });
+  execFileSync("gh", args, { encoding: "utf8", maxBuffer: 96 * 1024 * 1024, env: evidenceEnv(), ...opts });
 
 // The repo to host evidence in: AUTOQA_EVIDENCE_REPO, else the repo this CLI runs from (auto-qa).
 export function evidenceRepo() {
@@ -25,17 +36,37 @@ function ensureBranch(repo, branch) {
   } catch { return false; }
 }
 
+function rawUrl(repo, branch, filePath) {
+  return `https://raw.githubusercontent.com/${repo}/${branch}/${filePath}`;
+}
+
+function existingRawUrl(repo, branch, filePath) {
+  try {
+    return gh(["api", `repos/${repo}/contents/${filePath}?ref=${branch}`, "-q", ".download_url"]).trim() ||
+      rawUrl(repo, branch, filePath);
+  } catch {
+    return null;
+  }
+}
+
 // Create the file on the evidence branch. Paths are keyed by head SHA, so re-reviewing the same
-// commit hits the same path — a 422 "already exists" just means the raw URL is already valid.
+// commit hits the same path; if the image already exists, reuse its raw URL without writing.
 function putFile(repo, branch, filePath, buf, message) {
+  const existing = existingRawUrl(repo, branch, filePath);
+  if (existing) return existing;
+
   const body = JSON.stringify({ message, branch, content: buf.toString("base64") });
   try {
     gh(["api", "-X", "PUT", `repos/${repo}/contents/${filePath}`, "--input", "-"], { input: body });
   } catch (e) {
+    const existingAfterFailure = existingRawUrl(repo, branch, filePath);
+    if (existingAfterFailure) return existingAfterFailure;
     const msg = String(e?.stderr || e?.message || e);
-    if (!/already exists|wasn't supplied|HTTP 422|\b422\b/i.test(msg)) throw e;
+    if (!/already exists|wasn't supplied|HTTP 422|\b422\b/i.test(msg)) {
+      throw new Error(`${msg.trim()}\nSet AUTOQA_EVIDENCE_TOKEN to a token with write access to ${repo}, or let gh use a local account that can push there.`);
+    }
   }
-  return `https://raw.githubusercontent.com/${repo}/${branch}/${filePath}`;
+  return rawUrl(repo, branch, filePath);
 }
 
 // changedScreens: [{ name, file }]. shotPath(side, file) → absolute png path (side: "base"|"head").
