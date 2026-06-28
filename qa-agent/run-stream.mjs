@@ -6,7 +6,7 @@ for (const k of ["log", "info", "warn", "debug"]) {
 }
 const emit = (e) => process.stdout.write(JSON.stringify(e) + "\n");
 
-const [cmd, prId] = process.argv.slice(2);
+const [cmd, prId, postArg] = process.argv.slice(2);
 
 try {
   if (cmd === "onboard") {
@@ -16,10 +16,10 @@ try {
     const { mergePR } = await import("./merge.mjs");
     await mergePR(prId || "pr-1", { onEvent: emit });
   } else {
-    // Interactive cockpit review does NOT post to GitHub (avoid comment spam on every click);
-    // the CLI `npm run review <n>` posts.
+    // Manual cockpit Re-run does NOT post to GitHub (avoid comment spam on every click);
+    // the PR watcher passes post=1 so an auto-triggered review comments like the CLI does.
     const { reviewPR } = await import("./review.mjs");
-    await reviewPR(prId || "1", { onEvent: emit, post: false });
+    await reviewPR(prId || "1", { onEvent: emit, post: postArg === "1" });
   }
   emit({ type: "done" });
 } catch (err) {

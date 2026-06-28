@@ -1,5 +1,6 @@
-# dependencies
+# dependencies (the trailing-slash form misses a node_modules symlink in a worktree)
 node_modules/
+node_modules
 
 # secrets
 .env.local
@@ -21,6 +22,9 @@ test-results/
 
 # transient live-run frames streamed to the cockpit during a run
 .autoqa/**/run/
+
+# PR-trigger dedup state (per-machine runtime: which PR head SHAs were already reviewed)
+.autoqa/triggers.json
 
 # Claude Code local state / transient worktrees
 .claude/worktrees/
