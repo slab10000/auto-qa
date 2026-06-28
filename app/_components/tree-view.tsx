@@ -52,8 +52,8 @@ function buildRows(data: TreeData): Row[] {
   const repoShort = data.repo.split("/")[1] || data.repo;
 
   // The lane-0 spine, top→bottom: the current baseline (HEAD) then the history that
-  // produced it. PRs are interleaved ABOVE the spine node they branch out of, so each
-  // branch is a short, local curve (no fan-out / crossing).
+  // produced it. Open PRs are stacked above it and all branch out of the single `main`
+  // HEAD node (multiple branches from the same commit).
   const spine: Row[] = [
     {
       id: "main", kind: "main", lane: 0, idx: 0, hueVar: MAIN_VAR, hueHex: MAIN_HEX,
@@ -84,26 +84,12 @@ function buildRows(data: TreeData): Row[] {
     title: `#${p.num} · ${p.title}`,
     sub: `${p.verdict} · ${p.classification || "—"}${p.took ? ` · ${p.took}` : ""}`,
     verdict: p.verdict, selectable: true, target: p.id, activeId: p.id,
+    branchFrom: "main", // every open PR branches off the SAME main HEAD commit
   }));
 
-  // Interleave: PR[k] sits directly above spine[k] and branches from it.
-  const rows: Row[] = [];
-  let pi = 0;
-  for (let si = 0; si < spine.length; si++) {
-    if (pi < prNodes.length) {
-      prNodes[pi].branchFrom = spine[si].id;
-      rows.push(prNodes[pi]);
-      pi++;
-    }
-    rows.push(spine[si]);
-  }
-  // Overflow (more PRs than spine nodes): stack the rest below, off the last spine node.
-  while (pi < prNodes.length) {
-    prNodes[pi].branchFrom = spine[spine.length - 1].id;
-    rows.push(prNodes[pi]);
-    pi++;
-  }
-
+  // Stack the PRs (newest first) above the main spine; each one branches out of the single
+  // `main` node, so the graph shows multiple branches originating from the same commit.
+  const rows: Row[] = [...prNodes, ...spine];
   rows.forEach((r, i) => (r.idx = i));
   return rows;
 }
