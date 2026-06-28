@@ -10,6 +10,7 @@ import { reason } from "./gemini.mjs";
 import { reachGoal } from "./navigate.mjs";
 import { routeKey } from "./routes.mjs";
 import { remoteReview, remotePostComment } from "./code-review.mjs";
+import { publishEvidence } from "./evidence.mjs";
 import { VIEWPORT, navGoal } from "./config.mjs";
 import { AUTOQA, paths, readJSON, writePng } from "./memory.mjs";
 
@@ -181,10 +182,26 @@ export async function githubReview(repo, prNumber, { onEvent, post = true, resum
   emit({ type: "phase", phase: "code-review-wait", message: "Reviewing code in the managed-agent sandbox…" });
   const code_review = await codeReviewPromise;
 
+  // 5b) Publish before/after screenshots for the screens that visibly changed, so the comment can
+  // embed them (GitHub can't inline local files). Only when we're posting — best-effort.
+  let evidenceUrls = {};
+  if (post) {
+    const changedScreens = comparisons.filter((c) => c.changed).map((c) => ({ name: c.page, file: c.file }));
+    if (changedScreens.length) {
+      emit({ type: "phase", phase: "evidence", message: `Publishing before/after images for ${changedScreens.length} changed screen(s)` });
+      const headSha = git(["rev-parse", `origin/${pr.headRefName}`], repoDir).trim();
+      evidenceUrls = await publishEvidence({
+        repo, prNumber, slug, sha: headSha, changedScreens,
+        shotPath: (side, file) => path.join(workDir, side, `${file}.png`),
+        onEvent: emit,
+      });
+    }
+  }
+
   // 6) Compose the comment, then post it.
   // If AUTOQA_BOT_TOKEN is set, the remote agent posts it from the sandbox as its own
   // bot identity (never your personal gh login); otherwise local gh posts it (fallback).
-  const body = renderComment(pr, scope, comparisons, code_review, changedFiles);
+  const body = renderComment(pr, scope, comparisons, code_review, changedFiles, evidenceUrls);
   let posted = null;
   if (post) {
     const tmp = path.join(workDir, "comment.md");
@@ -212,10 +229,25 @@ export async function githubReview(repo, prNumber, { onEvent, post = true, resum
   return { pr, scope, comparisons, code_review, changedFiles, body, posted, routeStats, behaviorChecks };
 }
 
-function renderComment(pr, scope, comparisons, cr, changedFiles) {
+function renderComment(pr, scope, comparisons, cr, changedFiles, evidenceUrls = {}) {
   const emoji = scope.verdict === "FAIL" ? "🔴" : scope.verdict === "WARN" ? "🟡" : "🟢";
   const vis = comparisons
     .map((c) => `- **${c.page}** — ${c.changed ? `changed (${c.severity}): ${c.summary}` : "no change"}`)
+    .join("\n");
+  // Embed before/after screenshots for the screens that changed (when we managed to host them).
+  const shots = comparisons
+    .filter((c) => c.changed && evidenceUrls[c.page])
+    .map((c) => {
+      const u = evidenceUrls[c.page];
+      return `<details><summary>📸 <b>${c.page}</b> — before / after</summary>
+
+<table>
+<tr><td align="center"><sub>main (before)</sub></td><td align="center"><sub>PR (after)</sub></td></tr>
+<tr><td><img width="400" src="${u.before}" alt="${c.page} before"></td><td><img width="400" src="${u.after}" alt="${c.page} after"></td></tr>
+</table>
+
+</details>`;
+    })
     .join("\n");
   const list = (xs) => (xs && xs.length ? xs.map((x) => `- ${x}`).join("\n") : "- —");
   const concerns = (cr.concerns || []).map((x) => `- ${x}`).join("\n");
@@ -230,7 +262,7 @@ ${scope.reasoning}
 
 ### 👁️ Visual behavior — Computer Use captured each page (main vs PR)
 ${vis}
-
+${shots ? `\n${shots}\n` : ""}
 ### 🚀 Did it run? — remote sandbox cloned & launched the PR build
 ${runLine}
 
