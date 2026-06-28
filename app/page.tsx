@@ -9,13 +9,15 @@ export default function LandingPage() {
       </Link>
 
       <div className="lp-overlay">
-        <div className="lp-word">
-          auto<span>·</span>qa
+        <div className="lp-hero">
+          <div className="lp-word">
+            auto<span>·</span>qa
+          </div>
+          <p className="lp-sub">forget about QA, just keep the grind</p>
+          <Link href="/cockpit" className="lp-enter">
+            ENTER THE COCKPIT <span aria-hidden>→</span>
+          </Link>
         </div>
-        <div className="lp-tag">A QA AGENT THAT LEARNS YOUR PRODUCT AND REVIEWS EVERY COMMIT</div>
-        <Link href="/cockpit" className="lp-enter">
-          ENTER THE COCKPIT <span aria-hidden>→</span>
-        </Link>
       </div>
     </main>
   );

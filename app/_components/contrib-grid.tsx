@@ -3,11 +3,13 @@
 /* ============================================================
    auto·qa landing — 3D git-contribution table (three.js)
    A slightly-tilted "table" of the GitHub contribution grid.
-   Each green square is a 3D tile extruded upward by activity:
-   the greener (busier) the cell, the higher it rises. New
-   commits pop up with a bounce + flash; tiles under the cursor
-   slowly rise a little more and grow greener. Soft shadows sell
-   the raised-above-the-plane look; bloom makes the greens glow.
+   Each green square is a 3D tile extruded upward by activity.
+   Nothing animates on its own — tiles only react to the cursor:
+   the ones you sweep over slowly rise a little more and grow
+   greener, and the active (green) squares reveal annotation
+   "hints" — a connector line to a made-up PR label.
+   Soft shadows ground the tiles; emissive + bloom make the
+   active greens glow.
    ============================================================ */
 
 import { useEffect, useRef } from "react";
@@ -27,9 +29,27 @@ const GRID_W = COLS * PITCH;
 const GRID_D = ROWS * PITCH;
 
 const MAX_H = 0.74; // tallest resting tile — chunky raised squares, not towers
-const POP_H = 0.55; // extra height at the peak of a commit pop
-const HOVER_H = 0.34; // extra height under the cursor
-const HOVER_R = 1.25; // cursor influence radius (world units)
+const HOVER_H = 0.42; // extra height under the cursor
+const HOVER_R = 1.35; // cursor influence radius (world units)
+
+// hint annotations
+const MAX_HINTS = 5;
+const HINT_SHOW = 0.55; // hover strength that spawns a hint
+const HINT_HIDE = 0.26; // hover below this releases the hint (hysteresis)
+const MSGS = [
+  "PR #128 · change this color",
+  "PR #214 · update the landing",
+  "PR #97 · recolor the grid",
+  "PR #305 · ship hover hints",
+  "PR #142 · tweak the bloom",
+  "PR #88 · new contribution palette",
+  "PR #176 · center the hero",
+  "PR #233 · faster route replay",
+  "PR #51 · onboard a new repo",
+  "PR #260 · fix the tile shadows",
+  "PR #319 · add the subtitle",
+  "PR #404 · review me 👀",
+];
 
 /* deterministic PRNG so the field looks the same every load */
 function mulberry32(a: number) {
@@ -65,10 +85,12 @@ function genLevels(): Float32Array {
 
 export default function ContribGrid({ className }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const overlay = overlayRef.current;
+    if (!canvas || !overlay) return;
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -85,7 +107,6 @@ export default function ContribGrid({ className }: { className?: string }) {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x05060a);
-    // light fog only at the far edge for depth (kept well beyond the tiles)
     scene.fog = new THREE.Fog(0x05060a, 26, 60);
 
     const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
@@ -151,7 +172,7 @@ export default function ContribGrid({ className }: { className?: string }) {
     const baseH = new Float32Array(N);
     const curH = new Float32Array(N);
     const hover = new Float32Array(N);
-    const popStart = new Float32Array(N).fill(-99);
+    const msgOf = new Array<string>(N);
     for (let c = 0; c < COLS; c++) {
       for (let r = 0; r < ROWS; r++) {
         const i = c * ROWS + r;
@@ -159,6 +180,8 @@ export default function ContribGrid({ className }: { className?: string }) {
         cellZ[i] = (r - (ROWS - 1) / 2) * PITCH;
         baseH[i] = 0.07 + Math.pow(levels[i], 1.25) * MAX_H;
         curH[i] = 0.07; // start flat, rise in on the intro
+        const h = ((i * 2654435761) >>> 0) / 4294967296;
+        msgOf[i] = MSGS[Math.floor(h * MSGS.length) % MSGS.length];
       }
     }
 
@@ -170,12 +193,11 @@ export default function ContribGrid({ className }: { className?: string }) {
     const cG4 = new THREE.Color(0x4ae168);
     const tmp = new THREE.Color();
     function heatColor(heat: number, out: THREE.Color) {
-      const h = Math.max(0, Math.min(1.25, heat));
+      const h = Math.max(0, Math.min(1.1, heat));
       if (h < 0.25) out.copy(cEmpty).lerp(cG1, h / 0.25);
       else if (h < 0.5) out.copy(cG1).lerp(cG2, (h - 0.25) / 0.25);
       else if (h < 0.75) out.copy(cG2).lerp(cG3, (h - 0.5) / 0.25);
       else out.copy(cG3).lerp(cG4, Math.min(1, (h - 0.75) / 0.35));
-      if (h > 1) out.lerp(new THREE.Color(0xb8ffce), (h - 1) * 1.4); // flash on pops
       return out;
     }
 
@@ -184,8 +206,58 @@ export default function ContribGrid({ className }: { className?: string }) {
     for (let i = 0; i < N; i++) mesh.setColorAt(i, heatColor(levels[i], tmp));
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 
+    /* ---- hint overlay DOM pool (lines + labels) ---- */
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(SVGNS, "svg");
+    svg.setAttribute("class", "lp-hint-lines");
+    overlay.appendChild(svg);
+    const lineEls: SVGLineElement[] = [];
+    const dotEls: SVGCircleElement[] = [];
+    const labelEls: HTMLDivElement[] = [];
+    const slots = new Array<number>(MAX_HINTS).fill(-1);
+    const slotSX = new Float32Array(MAX_HINTS);
+    const slotSY = new Float32Array(MAX_HINTS);
+    const slotLX = new Float32Array(MAX_HINTS);
+    const slotLY = new Float32Array(MAX_HINTS);
+    const boxL = new Float32Array(MAX_HINTS);
+    const boxR = new Float32Array(MAX_HINTS);
+    const boxT = new Float32Array(MAX_HINTS);
+    const boxB = new Float32Array(MAX_HINTS);
+    const slotPrev = new Array<number>(MAX_HINTS).fill(-1);
+    const LBL_H = 28;
+    // label sits up-and-toward-screen-centre from its tile; returns box + anchor
+    function labelMetrics(ti: number, sx: number, sy: number) {
+      const lx = sx + (sx < W * 0.5 ? 38 : -38);
+      const ly = sy - 64;
+      const w = msgOf[ti].length * 6.9 + 26;
+      return { lx, ly, l: lx - w / 2, r: lx + w / 2, t: ly - LBL_H, b: ly };
+    }
+    function boxesOverlap(s: number, l: number, r: number, t: number, b: number) {
+      const m = 10;
+      return l < boxR[s] + m && r > boxL[s] - m && t < boxB[s] + m && b > boxT[s] - m;
+    }
+    for (let s = 0; s < MAX_HINTS; s++) {
+      const ln = document.createElementNS(SVGNS, "line");
+      ln.setAttribute("class", "lp-hint-line");
+      ln.style.opacity = "0";
+      svg.appendChild(ln);
+      lineEls.push(ln);
+      const dot = document.createElementNS(SVGNS, "circle");
+      dot.setAttribute("class", "lp-hint-dot");
+      dot.setAttribute("r", "3");
+      dot.style.opacity = "0";
+      svg.appendChild(dot);
+      dotEls.push(dot);
+      const lab = document.createElement("div");
+      lab.className = "lp-hint";
+      lab.style.opacity = "0";
+      overlay.appendChild(lab);
+      labelEls.push(lab);
+    }
+
     /* ---- camera framing: fit the wide panel, viewed at a tilt ---- */
     const ELEV = 0.7; // ~40° elevation → "slightly horizontal" table view
+    let camDist = 14;
     function fitCamera(w: number, h: number) {
       const aspect = w / h;
       camera.aspect = aspect;
@@ -193,11 +265,9 @@ export default function ContribGrid({ className }: { className?: string }) {
       const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
       const distW = (GRID_W * 0.5 + 0.25) / Math.tan(hFov / 2);
       const distD = (GRID_D * 0.5 + MAX_H) / Math.tan(vFov / 2);
-      const dist = Math.max(distW, distD) * 0.92;
-      camDist = dist;
+      camDist = Math.max(distW, distD) * 0.92;
       camera.updateProjectionMatrix();
     }
-    let camDist = 14;
 
     /* ---- pointer (window-level so the wrapping <a> doesn't block it) ---- */
     const ndc = new THREE.Vector2(-2, -2);
@@ -233,6 +303,7 @@ export default function ContribGrid({ className }: { className?: string }) {
       H = canvas!.clientHeight || window.innerHeight;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(W, H, false);
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
       fitCamera(W, H);
       if (composer) composer.setSize(W, H);
     }
@@ -242,8 +313,7 @@ export default function ContribGrid({ className }: { className?: string }) {
     try {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
-      const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.4, 0.62);
-      composer.addPass(bloom);
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.4, 0.62));
       composer.addPass(new OutputPass());
     } catch (err) {
       console.warn("[contrib-grid] bloom unavailable, rendering direct", err);
@@ -254,27 +324,12 @@ export default function ContribGrid({ className }: { className?: string }) {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    /* ---- animation ---- */
+    /* ---- animation (cursor-driven only) ---- */
     const start = performance.now();
     let last = start;
-    let nextPop = 0.4;
     let raf = 0;
-    const wakeColor = new THREE.Color();
-
-    function spawnPop(t: number) {
-      // weight toward busier cells (commits cluster in active areas)
-      let best = -1;
-      let bestW = -1;
-      for (let k = 0; k < 5; k++) {
-        const i = (Math.random() * N) | 0;
-        const w = (0.18 + levels[i]) * Math.random();
-        if (w > bestW) {
-          bestW = w;
-          best = i;
-        }
-      }
-      if (best >= 0) popStart[best] = t;
-    }
+    const pv = new THREE.Vector3();
+    const cands: number[] = [];
 
     function frame(now: number) {
       const t = (now - start) / 1000;
@@ -285,19 +340,13 @@ export default function ContribGrid({ className }: { className?: string }) {
       const reveal = Math.min(1, t / 1.6);
       const revEase = 1 - Math.pow(1 - reveal, 3);
 
-      // commit pops
-      while (t > nextPop) {
-        spawnPop(nextPop);
-        nextPop += 0.22 + Math.random() * 0.5;
-      }
-
       // smooth parallax
       parallax.x += (parallax.tx - parallax.x) * Math.min(1, dt * 3);
       parallax.y += (parallax.ty - parallax.y) * Math.min(1, dt * 3);
 
       // camera: tilted table, gentle mouse parallax
-      const az = parallax.x * 0.16;
-      const el = ELEV + parallax.y * 0.06;
+      const az = parallax.x * 0.12;
+      const el = ELEV + parallax.y * 0.05;
       const introPull = 1 + (1 - revEase) * 0.18;
       camera.position.set(
         Math.sin(az) * Math.cos(el) * camDist * introPull,
@@ -318,14 +367,9 @@ export default function ContribGrid({ className }: { className?: string }) {
       }
 
       const hoverEase = Math.min(1, dt * 3.2); // "slowly" rise/fall under cursor
-      const heatTmp = tmp;
+      cands.length = 0;
 
       for (let i = 0; i < N; i++) {
-        // commit pop bump (rise fast, settle)
-        const age = t - popStart[i];
-        let pop = 0;
-        if (age >= 0 && age < 2) pop = age < 0.16 ? age / 0.16 : Math.exp(-(age - 0.16) * 2.7);
-
         // cursor proximity
         let infl = 0;
         if (inside) {
@@ -339,8 +383,8 @@ export default function ContribGrid({ className }: { className?: string }) {
         }
         hover[i] += (infl - hover[i]) * hoverEase;
 
-        // height: base (by activity) + pop + hover, eased toward target
-        const targetH = (baseH[i] + pop * POP_H + hover[i] * HOVER_H) * revEase + 0.02;
+        // height: base (by activity) + hover, eased toward target
+        const targetH = (baseH[i] + hover[i] * HOVER_H) * revEase + 0.02;
         curH[i] += (targetH - curH[i]) * Math.min(1, dt * 12);
         const hgt = Math.max(0.02, curH[i]);
 
@@ -349,12 +393,81 @@ export default function ContribGrid({ className }: { className?: string }) {
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
 
-        // color: greener with activity + pop flash + hover
-        const heat = levels[i] + pop * 0.95 + hover[i] * 0.6;
-        mesh.setColorAt(i, heatColor(heat, heatTmp));
+        // color: greener under the cursor
+        mesh.setColorAt(i, heatColor(levels[i] + hover[i] * 0.8, tmp));
+
+        // a green (real-activity) square that's strongly hovered → annotate it
+        if (hover[i] > HINT_SHOW && levels[i] > 0.18) cands.push(i);
       }
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+
+      // ---- hint annotations ----
+      // release faded slots
+      for (let s = 0; s < MAX_HINTS; s++) {
+        if (slots[s] >= 0 && hover[slots[s]] < HINT_HIDE) slots[s] = -1;
+      }
+      // re-project held slots + recompute their label boxes
+      for (let s = 0; s < MAX_HINTS; s++) {
+        const ti = slots[s];
+        if (ti < 0) continue;
+        pv.set(cellX[ti], curH[ti] + 0.05, cellZ[ti]).project(camera);
+        const sx = (pv.x * 0.5 + 0.5) * W;
+        const sy = (1 - (pv.y * 0.5 + 0.5)) * H;
+        const m = labelMetrics(ti, sx, sy);
+        slotSX[s] = sx; slotSY[s] = sy; slotLX[s] = m.lx; slotLY[s] = m.ly;
+        boxL[s] = m.l; boxR[s] = m.r; boxT[s] = m.t; boxB[s] = m.b;
+      }
+      // fill empty slots from strongest candidates whose labels don't collide
+      cands.sort((a, b) => hover[b] - hover[a]);
+      for (let ci = 0; ci < cands.length; ci++) {
+        const ti = cands[ci];
+        if (slots.indexOf(ti) >= 0) continue;
+        let empty = -1;
+        for (let s = 0; s < MAX_HINTS; s++) if (slots[s] < 0) { empty = s; break; }
+        if (empty < 0) break;
+        pv.set(cellX[ti], curH[ti] + 0.05, cellZ[ti]).project(camera);
+        if (pv.z > 1) continue;
+        const sx = (pv.x * 0.5 + 0.5) * W;
+        const sy = (1 - (pv.y * 0.5 + 0.5)) * H;
+        const m = labelMetrics(ti, sx, sy);
+        if (m.t < 6) continue; // would clip the top edge
+        let ok = true;
+        for (let s = 0; s < MAX_HINTS; s++) {
+          if (slots[s] < 0) continue;
+          if (boxesOverlap(s, m.l, m.r, m.t, m.b)) { ok = false; break; }
+        }
+        if (!ok) continue;
+        slots[empty] = ti;
+        slotSX[empty] = sx; slotSY[empty] = sy; slotLX[empty] = m.lx; slotLY[empty] = m.ly;
+        boxL[empty] = m.l; boxR[empty] = m.r; boxT[empty] = m.t; boxB[empty] = m.b;
+      }
+      // render slots
+      for (let s = 0; s < MAX_HINTS; s++) {
+        const ti = slots[s];
+        const ln = lineEls[s];
+        const dot = dotEls[s];
+        const lab = labelEls[s];
+        if (ti < 0) {
+          if (lab.style.opacity !== "0") { lab.style.opacity = "0"; ln.style.opacity = "0"; dot.style.opacity = "0"; }
+          continue;
+        }
+        if (slotPrev[s] !== ti) {
+          lab.textContent = msgOf[ti];
+          slotPrev[s] = ti;
+        }
+        lab.style.transform = `translate(${slotLX[s]}px, ${slotLY[s]}px) translate(-50%, -100%)`;
+        ln.setAttribute("x1", String(slotSX[s]));
+        ln.setAttribute("y1", String(slotSY[s]));
+        ln.setAttribute("x2", String(slotLX[s]));
+        ln.setAttribute("y2", String(slotLY[s]));
+        dot.setAttribute("cx", String(slotSX[s]));
+        dot.setAttribute("cy", String(slotSY[s]));
+        const op = Math.max(0, Math.min(1, (hover[ti] - HINT_HIDE) / (HINT_SHOW - HINT_HIDE)));
+        lab.style.opacity = String(op);
+        ln.style.opacity = String(op * 0.9);
+        dot.style.opacity = String(op);
+      }
 
       if (composer) composer.render();
       else renderer.render(scene, camera);
@@ -380,6 +493,7 @@ export default function ContribGrid({ className }: { className?: string }) {
       window.removeEventListener("blur", onLeave);
       canvas.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("visibilitychange", onVis);
+      while (overlay.firstChild) overlay.removeChild(overlay.firstChild);
       composer?.dispose();
       geo.dispose();
       mat.dispose();
@@ -390,5 +504,10 @@ export default function ContribGrid({ className }: { className?: string }) {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className={className} aria-hidden="true" />;
+  return (
+    <div className="lp-stage">
+      <canvas ref={canvasRef} className={className} aria-hidden="true" />
+      <div ref={overlayRef} className="lp-hints" aria-hidden="true" />
+    </div>
+  );
 }
