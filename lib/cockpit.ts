@@ -167,7 +167,8 @@ export type Analysis = {
   comparisons: Comparison[];
   scopeIn: string[];
   scopeOut: string[];
-  codeReview: { scopeMatch: string; risk: string; summary: string; concerns: string[] } | null;
+  reasoning: string;
+  codeReview: { scopeMatch: string; risk: string; summary: string; concerns: string[]; status: string } | null;
   skills: { name: string }[];
   href: string | null; // in-cockpit /pr/<id>
   githubUrl: string | null;
@@ -216,6 +217,22 @@ function parseGhComment(c: string) {
   return { verdict, classification, title, description, comparisons, codeReview, scopeIn, scopeOut, changedFiles };
 }
 
+// A human label for the managed-agent code review state of a local report.
+function codeStatus(cr: any): string {
+  if (!cr) return "skipped";
+  if (cr.ran_ok === true) return "passed";
+  const rm = `${cr.run_method ?? ""} ${cr.summary ?? ""}`.toLowerCase();
+  if (rm.includes("timed out") || rm.includes("did not finish")) return "timed out";
+  return "skipped";
+}
+// Same, derived from the parsed GitHub-comment summary line.
+function ghCodeStatus(summary: string): string {
+  const s = (summary || "").toLowerCase();
+  if (s.includes("timed out") || s.includes("did not finish")) return "timed out";
+  if (s.includes("skipped")) return "skipped";
+  return "reviewed";
+}
+
 // All analyses (PR reviews) for the Overview list: rich local reports first, then any
 // GitHub-only reviews not already covered by a local report. Newest first.
 export async function getAnalyses(): Promise<Analysis[]> {
@@ -261,12 +278,14 @@ export async function getAnalyses(): Promise<Analysis[]> {
       }),
       scopeIn: r.scope_analysis?.in_scope ?? [],
       scopeOut: r.scope_analysis?.out_of_scope ?? [],
+      reasoning: r.scope_analysis?.reasoning ?? "",
       codeReview: r.code_review
         ? {
             scopeMatch: r.code_review.scope_match,
             risk: r.code_review.risk,
             summary: r.code_review.summary,
             concerns: r.code_review.concerns ?? [],
+            status: codeStatus(r.code_review),
           }
         : null,
       skills: await getPRSkills(r.pr?.id ?? `pr-${prNumber}`),
@@ -328,7 +347,8 @@ export async function getAnalyses(): Promise<Analysis[]> {
       })),
       scopeIn: p.scopeIn,
       scopeOut: p.scopeOut,
-      codeReview: p.codeReview,
+      reasoning: p.description,
+      codeReview: p.codeReview ? { ...p.codeReview, status: ghCodeStatus(p.codeReview.summary) } : null,
       skills: [],
       href: null,
       githubUrl: `https://github.com/${g.repo}/pull/${prNumber}`,
@@ -555,4 +575,168 @@ export function buildRunView(report: any, prSkills: { name: string; body: string
     artifacts: { skills: prSkills.length, shots, contracts },
     skillsWritten: prSkills.map((s) => ({ name: s.name })),
   };
+}
+
+/* ---------- tree visualizer data (the "Tree" cockpit tab) ---------- */
+
+export type TreeScreen = { id: string; name: string; url: string; purpose: string; shot: string | null };
+export type TreeContract = { id: string; action: string; dest: string; anchor: string; confPct: string };
+export type TreeSkill = { name: string; step: string; expected: string };
+export type TreeRoute = { goal: string; sig: string; url: string };
+export type TreeMain = {
+  repo: string;
+  learnedAt: string | null;
+  counts: { screens: number; contracts: number; skills: number; routes: number };
+  screens: TreeScreen[];
+  contracts: TreeContract[];
+  skills: TreeSkill[];
+  routes: TreeRoute[];
+};
+export type TreeDiff = {
+  screen: string;
+  changed: boolean;
+  severity: string;
+  scope: "in" | "out" | null;
+  summary: string;
+  base: string | null;
+  head: string | null;
+  navChanged: boolean;
+  navObserved?: string;
+};
+export type TreePR = {
+  id: string;
+  num: number;
+  title: string;
+  branch: string;
+  base: string;
+  verdict: string;
+  classification: string;
+  took: string | null;
+  statedScope: string;
+  changedFiles: string[];
+  contractsOk: number | null;
+  contractsTotal: number | null;
+  replay: { pages: number; llm: number } | null;
+  diffs: TreeDiff[];
+  inScope: string[];
+  outScope: string[];
+  reasoning: string;
+  code: { status: string; scope: string; risk: string; note: string } | null;
+  mergeNote: string;
+  href: string | null;
+  githubUrl: string | null;
+};
+export type TreeData = { repo: string; main: TreeMain; prs: TreePR[] };
+
+export function fmtMs(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  return `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
+}
+
+function listJoin(arr: string[]): string {
+  if (arr.length <= 1) return arr[0] ?? "";
+  if (arr.length === 2) return `${arr[0]} + ${arr[1]}`;
+  return `${arr.slice(0, -1).join(", ")} + ${arr[arr.length - 1]}`;
+}
+
+// Parse a learned skill .md ("# Skill: …", numbered step, "Expected: …") into card fields.
+function parseSkill(name: string, body: string): TreeSkill {
+  const title = (body.match(/^#\s*Skill:\s*(.+)$/m)?.[1] || name.replace(/\.md$/, "")).trim();
+  const step = (body.match(/^\s*\d+\.\s*(.+)$/m)?.[1] || "").trim();
+  const expected = (body.match(/Expected:\s*(.+)$/m)?.[1] || "").trim();
+  return { name: title, step, expected };
+}
+
+// Shape the learned main memory + every analysis into the Tree tab's serializable model.
+export function buildTreeData(
+  repo: string,
+  mem: { screens: any[]; behaviors: any[]; skills: { name: string; body: string }[]; learnedAt?: string },
+  routes: { goal: string; actions: any[]; expected_url?: string }[],
+  analyses: Analysis[]
+): TreeData {
+  const main: TreeMain = {
+    repo,
+    learnedAt: mem.learnedAt ?? null,
+    counts: {
+      screens: mem.screens.length,
+      contracts: mem.behaviors.length,
+      skills: mem.skills.length,
+      routes: routes.length,
+    },
+    screens: mem.screens.map((s) => ({
+      id: s.id,
+      name: s.name,
+      url: s.url,
+      purpose: s.purpose,
+      shot: s.screenshot ? evidence(s.screenshot) : null,
+    })),
+    contracts: mem.behaviors.map((b) => ({
+      id: b.id,
+      action: b.action,
+      dest: b.expected_result?.destination_url ?? "",
+      anchor: b.expected_result?.visual_anchor ?? "",
+      confPct: `${Math.round((b.confidence ?? 0.9) * 100)}%`,
+    })),
+    skills: mem.skills.map((k) => parseSkill(k.name, k.body)),
+    routes: routes.map((r) => {
+      const sig0 = r.actions?.[0]?.signature;
+      return {
+        goal: r.goal,
+        sig: sig0 ? `${sig0.tag} · "${sig0.text}"` : r.actions?.[0]?.intent ?? "",
+        url: r.expected_url ?? "",
+      };
+    }),
+  };
+
+  const prs: TreePR[] = analyses.map((a) => {
+    const changedScreens = a.onMerge?.baselineUpdates.map((b) => b.screen) ?? [];
+    const intact = a.behavior ? a.behavior.total - a.behavior.mismatches : null;
+    const mergeNote = changedScreens.length
+      ? `Approving folds the new ${listJoin(changedScreens)} baseline${changedScreens.length === 1 ? "" : "s"} into main` +
+        (a.behavior ? `; the ${a.behavior.total} navigation contract${a.behavior.total === 1 ? "" : "s"} stay intact` : "") +
+        ". " +
+        (a.skills.length
+          ? `Graduates ${a.skills.length} skill${a.skills.length === 1 ? "" : "s"}.`
+          : "No new skills or routes to graduate.")
+      : "No screen baseline changed — nothing new graduates into main.";
+    return {
+      id: a.prId,
+      num: Number(a.prNumber) || 0,
+      title: a.title,
+      branch: a.branch,
+      base: a.base,
+      verdict: a.verdict,
+      classification: a.classification,
+      took: a.tookMs != null ? fmtMs(a.tookMs) : null,
+      statedScope: a.description || a.title,
+      changedFiles: a.changedFiles,
+      contractsTotal: a.behavior ? a.behavior.total : null,
+      contractsOk: intact,
+      replay: a.navigation?.usedSkills ? { pages: a.navigation.cachedPages, llm: 0 } : null,
+      diffs: a.comparisons.map((c) => ({
+        screen: c.screen,
+        changed: c.changed,
+        severity: c.severity,
+        scope: c.scope ?? null,
+        summary: c.summary,
+        base: c.before ?? null,
+        head: c.after ?? null,
+        navChanged: !!c.navChanged,
+        navObserved: c.navObserved,
+      })),
+      inScope: a.scopeIn,
+      outScope: a.scopeOut,
+      reasoning: a.reasoning,
+      code: a.codeReview
+        ? { status: a.codeReview.status, scope: a.codeReview.scopeMatch, risk: a.codeReview.risk, note: a.codeReview.summary }
+        : null,
+      mergeNote,
+      href: a.href,
+      githubUrl: a.githubUrl,
+    };
+  });
+
+  return { repo, main, prs };
 }
