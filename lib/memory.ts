@@ -81,8 +81,9 @@ export async function getRoutes(): Promise<{ goal: string; actions: any[]; expec
   return out;
 }
 
-// Visual changelog: one folder of screens per merged branch (excluding the live "main").
-export async function getScreenshotHistory(): Promise<{ branch: string; shots: string[] }[]> {
+// Visual changelog: one folder of screens per branch. `includeMain` keeps the live
+// baseline (the Gallery shows it as "main · current baseline").
+export async function getScreenshotHistory(includeMain = false): Promise<{ branch: string; shots: string[] }[]> {
   const dir = path.join(AUTOQA, "screenshots");
   let entries: { name: string; dir: boolean }[] = [];
   try {
@@ -90,14 +91,65 @@ export async function getScreenshotHistory(): Promise<{ branch: string; shots: s
   } catch {
     return [];
   }
+  // main first when included, then the rest
+  entries.sort((a, b) => (a.name === "main" ? -1 : b.name === "main" ? 1 : a.name.localeCompare(b.name)));
   const out: { branch: string; shots: string[] }[] = [];
   for (const e of entries) {
-    if (!e.dir || e.name === "main") continue;
+    if (!e.dir) continue;
+    if (e.name === "main" && !includeMain) continue;
     let shots: string[] = [];
     try {
       shots = (await fs.readdir(path.join(dir, e.name))).filter((f) => f.endsWith(".png"));
     } catch {}
     out.push({ branch: e.name, shots: shots.map((s) => `screenshots/${e.name}/${s}`) });
+  }
+  return out;
+}
+
+// Skills a PR run wrote for itself (pending graduation into main on merge).
+export async function getPRSkills(id: string): Promise<{ name: string; body: string }[]> {
+  const skills: { name: string; body: string }[] = [];
+  try {
+    const dir = path.join(AUTOQA, "prs", id, "skills");
+    const files = (await fs.readdir(dir)).filter((f) => f.endsWith(".md"));
+    for (const f of files) skills.push({ name: f, body: await fs.readFile(path.join(dir, f), "utf8") });
+  } catch {}
+  return skills;
+}
+
+export type GhReview = {
+  repo: string; // owner/name
+  pr: string; // "pr-1"
+  verdict: string; // PASS | WARN | FAIL
+  comment: string; // raw comment.md
+  base: { screen: string; rel: string }[];
+  head: { screen: string; rel: string }[];
+};
+
+// Real GitHub reviews posted by qa-agent/github-review.mjs (base vs head + posted comment).
+export async function listGhReviews(): Promise<GhReview[]> {
+  const root = path.join(AUTOQA, "gh");
+  const out: GhReview[] = [];
+  let repos: string[] = [];
+  try { repos = await fs.readdir(root); } catch { return []; }
+  for (const repoDir of repos) {
+    const repo = repoDir.replace(/__/g, "/");
+    let prs: string[] = [];
+    try { prs = await fs.readdir(path.join(root, repoDir)); } catch { continue; }
+    for (const pr of prs) {
+      const prDir = path.join(root, repoDir, pr);
+      let comment = "";
+      try { comment = await fs.readFile(path.join(prDir, "comment.md"), "utf8"); } catch { continue; }
+      const m = comment.match(/auto-qa review\s*—\s*\*\*(\w+)\*\*/i);
+      const verdict = (m?.[1] || "WARN").toUpperCase();
+      const shots = async (side: "base" | "head") => {
+        try {
+          const files = (await fs.readdir(path.join(prDir, side))).filter((f) => f.endsWith(".png"));
+          return files.map((f) => ({ screen: f.replace(/\.html\.png$|\.png$/, ""), rel: `gh/${repoDir}/${pr}/${side}/${f}` }));
+        } catch { return []; }
+      };
+      out.push({ repo, pr, verdict, comment, base: await shots("base"), head: await shots("head") });
+    }
   }
   return out;
 }
