@@ -1,0 +1,18 @@
+{
+  "id": "home-nav-tasks",
+  "screen": "Home",
+  "action": "Click \"Tasks\" in the top nav",
+  "expected_result": {
+    "type": "navigation",
+    "url_changed": true,
+    "destination_url": "/tasks.html",
+    "visual_anchor": "Tasks heading visible"
+  },
+  "evidence": {
+    "before": "screenshots/main/home.png",
+    "after": "screenshots/main/tasks.png"
+  },
+  "confidence": 0.92,
+  "learned_from": "main",
+  "last_verified": "2026-06-28T07:00:08.496Z"
+}

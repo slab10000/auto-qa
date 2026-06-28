@@ -7,21 +7,55 @@
     "branch": "pr-store-copy",
     "base": "main"
   },
-  "generated_at": "2026-06-28T06:30:30.306Z",
-  "took_ms": 117086,
+  "generated_at": "2026-06-28T07:03:13.546Z",
+  "took_ms": 92752,
   "verdict": "WARN",
   "behavior_checks": [],
+  "route_metrics": {
+    "used_skills": true,
+    "cached": true,
+    "cached_pages": 4,
+    "explored_pages": 0,
+    "ms": 1768,
+    "llmCalls": 0,
+    "pages": [
+      {
+        "page": "Store",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 446
+      },
+      {
+        "page": "Dashboard",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 437
+      },
+      {
+        "page": "Tasks",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 439
+      },
+      {
+        "page": "Contact",
+        "cached": true,
+        "llmCalls": 0,
+        "ms": 446
+      }
+    ]
+  },
   "visual_comparisons": [
     {
       "screen": "Home",
       "changed": true,
-      "summary": "The main hero heading text was updated from 'The workspace for teams who ship.' to 'Ship faster with one workspace for your whole team.', which increased the heading to three lines and shifted the subsequent left-column content downwards.",
+      "summary": "The main hero headline copy was updated from 'The workspace for teams who ship.' to 'Ship faster with one workspace for your whole team.'",
       "severity": "low"
     },
     {
       "screen": "Store",
       "changed": true,
-      "summary": "The description text below the 'Plans & add-ons' heading was updated to 'Browse plans, add-ons, and hardware — add what your team needs and check out in seconds.'",
+      "summary": "The subtext description below the 'Plans & add-ons' heading has been updated to 'Browse plans, add-ons, and hardware — add what your team needs and check out in seconds.'",
       "severity": "low"
     },
     {
@@ -47,12 +81,12 @@
     "verdict": "WARN",
     "classification": "needs_review",
     "in_scope": [
-      "Update to the description text on the Store page (products.html) to 'Browse plans, add-ons, and hardware — add what your team needs and check out in seconds.'"
+      "Update to the subtext description on the Store page (products.html) to mention plans, add-ons, and hardware."
     ],
     "out_of_scope": [
-      "Update to the main hero heading text on the Home page (index.html) to 'Ship faster with one workspace for your whole team.', which causes a visual layout shift by increasing the heading to three lines."
+      "Update to the main hero headline copy on the Home page (index.html)."
     ],
-    "reasoning": "The change to products.html is fully in-scope and matches the stated objective. However, the modification to index.html (Home page) is explicitly out-of-scope ('Store page copy only') and introduces undocumented visual changes to the home page layout. This out-of-scope change needs to be reviewed, approved, or reverted."
+    "reasoning": "The PR contains a change to the Home page (index.html) hero headline which directly violates the stated scope of 'Store page copy only'. This out-of-scope change needs to be reviewed or reverted."
   },
   "code_review": {
     "ran_ok": null,
@@ -63,7 +97,8 @@
     "summary": "The remote managed-agent code review did not finish within 90s and was skipped — the visual behavior + scope analysis above stand.",
     "concerns": [],
     "environment_id": null,
-    "ran_in": "remote managed agent · antigravity"
+    "ran_in": "remote managed agent · antigravity",
+    "reused_session": false
   },
   "changed_files": [
     "index.html",

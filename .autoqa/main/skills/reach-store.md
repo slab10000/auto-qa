@@ -1,8 +1,8 @@
 # Skill: Reach the Store page
 
-Context: it is reachable from the Home page's top navigation bar.
+Context: the Store page is reachable from the top navigation bar (on every screen).
 
 Steps:
-1. Click the 'Store' link in the top navigation bar.
+1. Click the "Store" link in the top navigation bar to open the Store page.
 
-Expected: navigation to /products.html, with its heading visible.
+Expected: navigation to /products.html, with the "Store" heading visible.

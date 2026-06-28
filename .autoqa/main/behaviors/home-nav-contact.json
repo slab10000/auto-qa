@@ -1,0 +1,18 @@
+{
+  "id": "home-nav-contact",
+  "screen": "Home",
+  "action": "Click \"Contact\" in the top nav",
+  "expected_result": {
+    "type": "navigation",
+    "url_changed": true,
+    "destination_url": "/contact.html",
+    "visual_anchor": "Contact heading visible"
+  },
+  "evidence": {
+    "before": "screenshots/main/home.png",
+    "after": "screenshots/main/contact.png"
+  },
+  "confidence": 0.92,
+  "learned_from": "main",
+  "last_verified": "2026-06-28T07:00:56.006Z"
+}

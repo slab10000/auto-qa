@@ -2,11 +2,11 @@
 
 > Stated scope: _Update Store page copy_
 
-The change to products.html is fully in-scope and matches the stated objective. However, the modification to index.html (Home page) is explicitly out-of-scope ('Store page copy only') and introduces undocumented visual changes to the home page layout. This out-of-scope change needs to be reviewed, approved, or reverted.
+The PR contains a change to the Home page (index.html) hero headline which directly violates the stated scope of 'Store page copy only'. This out-of-scope change needs to be reviewed or reverted.
 
 ### 👁️ Visual behavior — Computer Use captured each page (main vs PR)
-- **Home** — changed (low): The main hero heading text was updated from 'The workspace for teams who ship.' to 'Ship faster with one workspace for your whole team.', which increased the heading to three lines and shifted the subsequent left-column content downwards.
-- **Store** — changed (low): The description text below the 'Plans & add-ons' heading was updated to 'Browse plans, add-ons, and hardware — add what your team needs and check out in seconds.'
+- **Home** — changed (low): The main hero headline copy was updated from 'The workspace for teams who ship.' to 'Ship faster with one workspace for your whole team.'
+- **Store** — changed (low): The subtext description below the 'Plans & add-ons' heading has been updated to 'Browse plans, add-ons, and hardware — add what your team needs and check out in seconds.'
 - **Dashboard** — no change
 - **Tasks** — no change
 - **Contact** — no change
@@ -24,10 +24,10 @@ The remote managed-agent code review did not finish within 90s and was skipped �
 
 ### Scope
 **In scope**
-- Update to the description text on the Store page (products.html) to 'Browse plans, add-ons, and hardware — add what your team needs and check out in seconds.'
+- Update to the subtext description on the Store page (products.html) to mention plans, add-ons, and hardware.
 
 **Out of scope**
-- Update to the main hero heading text on the Home page (index.html) to 'Ship faster with one workspace for your whole team.', which causes a visual layout shift by increasing the heading to three lines.
+- Update to the main hero headline copy on the Home page (index.html).
 
 ### Changed files
 - `index.html`

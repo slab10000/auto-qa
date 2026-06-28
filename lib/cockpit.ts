@@ -144,6 +144,8 @@ export type Analysis = {
   skills: { name: string }[];
   href: string | null; // in-cockpit /pr/<id>
   githubUrl: string | null;
+  navigation: { usedSkills: boolean; cachedPages: number; exploredPages: number } | null;
+  reusedSession: boolean;
 };
 
 // Parse the markdown comment auto-qa posts (our own stable format) into structured fields.
@@ -227,6 +229,14 @@ export async function getAnalyses(): Promise<Analysis[]> {
       skills: await getPRSkills(r.pr?.id ?? `pr-${prNumber}`),
       href: `/pr/${r.pr?.id ?? `pr-${prNumber}`}`,
       githubUrl: r.github?.url ?? (repo ? `https://github.com/${repo}/pull/${prNumber}` : null),
+      navigation: r.route_metrics
+        ? {
+            usedSkills: !!r.route_metrics.used_skills,
+            cachedPages: r.route_metrics.cached_pages ?? 0,
+            exploredPages: r.route_metrics.explored_pages ?? 0,
+          }
+        : null,
+      reusedSession: !!r.code_review?.reused_session,
     });
   }
 
@@ -258,6 +268,8 @@ export async function getAnalyses(): Promise<Analysis[]> {
       skills: [],
       href: null,
       githubUrl: `https://github.com/${g.repo}/pull/${prNumber}`,
+      navigation: null,
+      reusedSession: false,
     });
   }
 

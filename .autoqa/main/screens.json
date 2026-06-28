@@ -1,41 +1,41 @@
 {
   "learned_from": "main",
   "repo": "slab10000/test-app",
-  "learned_at": "2026-06-28T06:17:16.549Z",
+  "learned_at": "2026-06-28T07:01:15.647Z",
   "screens": [
     {
       "id": "home",
       "name": "Home",
       "url": "/",
-      "purpose": "This is the landing page of a web application, designed to introduce the product's features and encourage visitors to sign up for a free trial or request early access.",
+      "purpose": "This is the landing page of a project management web application, designed to introduce the product and convert visitors into users through free trials or early access requests.",
       "screenshot": "screenshots/main/home.png"
     },
     {
       "id": "store",
       "name": "Store",
       "url": "/products.html",
-      "purpose": "This is the store screen of a web app, designed for users to browse and purchase subscription plans and add-ons.",
+      "purpose": "This is the store screen of a web application, used for browsing and purchasing different subscription plans and add-ons.",
       "screenshot": "screenshots/main/store.png"
     },
     {
       "id": "dashboard",
       "name": "Dashboard",
       "url": "/dashboard.html",
-      "purpose": "This is a workspace dashboard designed to provide a high-level overview of team metrics, project progress, and recent activity.",
+      "purpose": "This is a workspace dashboard screen designed to provide a high-level overview of key project metrics and recent team activity.",
       "screenshot": "screenshots/main/dashboard.png"
     },
     {
       "id": "tasks",
       "name": "Tasks",
       "url": "/tasks.html",
-      "purpose": "This is the Tasks screen, which is used for creating, managing, and tracking a user's to-do list.",
+      "purpose": "This is the Tasks screen, which is used for creating, managing, and tracking a to-do list.",
       "screenshot": "screenshots/main/tasks.png"
     },
     {
       "id": "contact",
       "name": "Contact",
       "url": "/contact.html",
-      "purpose": "This is the Contact screen of the web app, designed to allow users to get in touch with the company's team by filling out an inquiry form or using the provided contact details.",
+      "purpose": "This is the \"Contact Us\" page of a web app, designed to let users get in touch with the company's team via a contact form, email, or live chat.",
       "screenshot": "screenshots/main/contact.png"
     }
   ]

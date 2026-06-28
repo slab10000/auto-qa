@@ -102,7 +102,7 @@ export async function codeReview(pr, diff, changedFiles, { onEvent } = {}) {
 // --- Mode 2: clone + RUN + review straight from the repo URL (GitHub path) ----
 // The agent does the whole thing autonomously: clone the repo, check out the PR
 // head, start/serve the app and verify it actually responds, then review the diff.
-export async function remoteReview({ repo, prNumber, title, body, baseRef, headRef }, { onEvent } = {}) {
+export async function remoteReview({ repo, prNumber, title, body, baseRef, headRef }, { onEvent, resumeFrom } = {}) {
   const emit = onEvent || (() => {});
   emit({
     type: "phase", phase: "remote-review",
@@ -130,9 +130,28 @@ export async function remoteReview({ repo, prNumber, title, body, baseRef, headR
     `"scope_match":"aligned|scope_creep|unclear","risk":"low|medium|high",` +
     `"summary":string,"concerns":[string]}`;
 
-  const res = await withTimeout(ai.interactions.create({ agent: AGENT, environment: "remote", input }));
+  // Best-effort session reuse: if we have a prior interaction id for this PR, resume that same
+  // sandbox via previous_interaction_id. If the SDK rejects it (stale/unsupported), start fresh.
+  const create = (extra = {}) =>
+    withTimeout(
+      ai.interactions
+        .create({ agent: AGENT, environment: "remote", input, ...extra })
+        .catch((e) => {
+          emit({ type: "remote_note", message: `session resume unavailable (${e?.message || e}); starting fresh` });
+          return null;
+        })
+    );
+
+  let reused = false;
+  let res = null;
+  if (resumeFrom) {
+    emit({ type: "phase", phase: "remote-resume", message: `Reusing the previous managed-agent session for ${repo}#${prNumber}` });
+    res = await create({ previous_interaction_id: resumeFrom });
+    if (res && res !== TIMED_OUT) reused = true;
+  }
+  if (!res) res = await create(); // no resume, or resume errored → fresh sandbox
   if (res === TIMED_OUT) {
-    const result = timedOutReview();
+    const result = { ...timedOutReview(), reused_session: false };
     emit({ type: "code_review", ...result });
     return result;
   }
@@ -146,9 +165,11 @@ export async function remoteReview({ repo, prNumber, title, body, baseRef, headR
   const result = {
     ...parsed,
     environment_id: res.environment_id || null,
-    ran_in: "remote managed agent · antigravity",
+    interaction_id: res.id || null,
+    reused_session: reused,
+    ran_in: reused ? "remote managed agent · antigravity (reused session)" : "remote managed agent · antigravity",
   };
-  emit({ type: "code_review", ...result });
+  emit({ type: "code_review", ...result, reused_session: reused });
   return result;
 }
 

@@ -1,0 +1,17 @@
+{
+  "goal": "Click the \"Dashboard\" link in the top navigation bar to open the Dashboard page.",
+  "actions": [
+    {
+      "name": "click",
+      "x": 383,
+      "y": 40,
+      "intent": "Click the 'Dashboard' link in the top navigation bar to go to the Dashboard page.",
+      "signature": {
+        "tag": "A",
+        "text": "Dashboard"
+      }
+    }
+  ],
+  "expected_url": "/dashboard.html",
+  "learned_at": "2026-06-28T07:00:00.383Z"
+}

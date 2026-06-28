@@ -1,0 +1,18 @@
+{
+  "id": "home-nav-dashboard",
+  "screen": "Home",
+  "action": "Click \"Dashboard\" in the top nav",
+  "expected_result": {
+    "type": "navigation",
+    "url_changed": true,
+    "destination_url": "/dashboard.html",
+    "visual_anchor": "Dashboard heading visible"
+  },
+  "evidence": {
+    "before": "screenshots/main/home.png",
+    "after": "screenshots/main/dashboard.png"
+  },
+  "confidence": 0.92,
+  "learned_from": "main",
+  "last_verified": "2026-06-28T07:00:00.384Z"
+}

@@ -2,14 +2,18 @@
 // in-app run inspector (/pr/[id]) and Current PRs render the same review the agent posts.
 import { githubReview } from "./github-review.mjs";
 import { TARGET_REPO } from "./config.mjs";
-import { paths, writeJSON, writeText } from "./memory.mjs";
+import { paths, readJSON, writeJSON, writeText } from "./memory.mjs";
 
 const stamp = () => new Date().toISOString();
 
 export async function reviewPR(prRef = "1", { onEvent, post = true } = {}) {
   const t0 = Date.now();
   const n = String(prRef).replace(/^pr-/, "") || "1";
-  const res = await githubReview(TARGET_REPO, n, { onEvent, post });
+  const prId = `pr-${n}`;
+  // Reuse the managed-agent session from a prior review of this PR, if we have one.
+  const prior = await readJSON(paths.prReport(prId), null);
+  const resumeFrom = prior?.code_review?.interaction_id || null;
+  const res = await githubReview(TARGET_REPO, n, { onEvent, post, resumeFrom });
 
   // Map the GitHub review into the cockpit report shape. Evidence points at the
   // base/head screenshots Computer Use already captured under .autoqa/gh/.
@@ -22,7 +26,21 @@ export async function reviewPR(prRef = "1", { onEvent, post = true } = {}) {
     return { screen: c.page, changed: c.changed, summary: c.summary, severity: c.severity };
   });
 
-  const prId = `pr-${n}`;
+  // Navigation cache stats: did reviews replay learned routes (using skills) or explore fresh?
+  const rs = res.routeStats ?? [];
+  const cachedPages = rs.filter((r) => r.cached).length;
+  const route_metrics = rs.length
+    ? {
+        used_skills: cachedPages > 0,
+        cached: cachedPages === rs.length,
+        cached_pages: cachedPages,
+        explored_pages: rs.length - cachedPages,
+        ms: rs.reduce((a, r) => a + (r.ms || 0), 0),
+        llmCalls: rs.reduce((a, r) => a + (r.llmCalls || 0), 0),
+        pages: rs,
+      }
+    : null;
+
   const report = {
     pr: {
       id: prId,
@@ -36,6 +54,7 @@ export async function reviewPR(prRef = "1", { onEvent, post = true } = {}) {
     took_ms: Date.now() - t0,
     verdict: res.scope.verdict,
     behavior_checks: [], // GitHub flow is page-level visual + scope; nav contracts live in main memory
+    route_metrics,
     visual_comparisons,
     scope_analysis: res.scope,
     code_review: { ...res.code_review, ran_in: "remote managed agent · antigravity" },

@@ -6,9 +6,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright";
 import { serveStatic } from "./serve.mjs";
-import { runGoal, reason } from "./gemini.mjs";
+import { reason } from "./gemini.mjs";
+import { reachGoal } from "./navigate.mjs";
+import { routeKey } from "./routes.mjs";
 import { remoteReview, remotePostComment } from "./code-review.mjs";
-import { VIEWPORT } from "./config.mjs";
+import { VIEWPORT, navGoal } from "./config.mjs";
 import { AUTOQA, writePng } from "./memory.mjs";
 
 const gh = (args) => execFileSync("gh", args, { encoding: "utf8" });
@@ -32,7 +34,7 @@ function parseJSON(text, fallback) {
   }
 }
 
-export async function githubReview(repo, prNumber, { onEvent, post = true } = {}) {
+export async function githubReview(repo, prNumber, { onEvent, post = true, resumeFrom } = {}) {
   const emit = onEvent || (() => {});
   const pr = JSON.parse(
     gh(["pr", "view", String(prNumber), "-R", repo, "--json", "number,title,body,headRefName,baseRefName,url"])
@@ -58,7 +60,7 @@ export async function githubReview(repo, prNumber, { onEvent, post = true } = {}
   // app to verify it boots, and reviews the diff — all in its own remote sandbox.
   const codeReviewPromise = remoteReview(
     { repo, prNumber, title: pr.title, body: pr.body, baseRef: pr.baseRefName, headRef: pr.headRefName },
-    { onEvent: emit }
+    { onEvent: emit, resumeFrom }
   ).catch((e) => ({
     ran_ok: null, run_method: "unknown", run_evidence: `remote review unavailable: ${e?.message || e}`,
     scope_match: "unclear", risk: "unknown", summary: `remote review unavailable: ${e?.message || e}`, concerns: [],
@@ -84,35 +86,45 @@ export async function githubReview(repo, prNumber, { onEvent, post = true } = {}
   }
   await site.close();
 
-  // 3) Capture the PR with Computer Use driving the navigation — streaming each frame
-  // to disk so the cockpit's live "watch it think" sandbox shows the real screens.
+  // 3) Capture the PR. Reach each page by REPLAYING the cached route the agent learned on main
+  // (0 model calls when the nav is unchanged); fall back to fresh Computer Use only if it changed.
+  // Each frame is streamed to disk so the cockpit's live sandbox shows the real screens.
   git(["checkout", "-q", pr.headRefName], repoDir);
   site = await serveStatic(repoDir);
-  emit({ type: "phase", phase: "capture", message: "Computer Use exploring the PR build" });
-  await page.goto(site.url, { waitUntil: "load" });
+  emit({ type: "phase", phase: "capture", message: "Replaying learned routes on the PR build" });
   const headBuf = {};
   const slug = repo.replace("/", "__");
   const runDir = path.join(workDir, "run");
   mkdirSync(runDir, { recursive: true });
   let liveN = 0;
-  const streamFrame = (entry, buf) => {
+  const streamFrame = (entry, buf, cached) => {
     const k = ++liveN;
     const rel = `gh/${slug}/pr-${prNumber}/run/${k}.png`;
     if (buf) writeFileSync(path.join(AUTOQA, rel), buf);
-    emit({ type: "step", action: entry.action, intent: entry.intent, url: entry.url, shot: buf ? rel : undefined });
+    emit({ type: "step", action: entry.action, intent: entry.intent, url: entry.url, shot: buf ? rel : undefined, cached: !!cached });
   };
+  const routeStats = [];
   for (const f of pages) {
     const name = nameFor(f);
-    await runGoal(page, `Open the ${name} page using the top navigation bar.`, {
-      maxSteps: 4,
-      onShot: (_i, buf, entry) => streamFrame(entry, buf),
-    });
-    if (!page.url().endsWith(f)) await page.goto(`${site.url}/${f}`, { waitUntil: "load" }); // safety fallback
+    await page.goto(site.url, { waitUntil: "load" }); // start from Home; the nav is on every page
+    if (f === "index.html") {
+      streamFrame({ action: "goto", intent: "Open the Home page", url: page.url() }, await page.screenshot(), false);
+    } else {
+      const goal = navGoal(name);
+      const nav = await reachGoal(page, goal, {
+        cacheKey: routeKey(goal),
+        onShot: (_i, buf, entry) => streamFrame(entry, buf, entry.cached),
+      });
+      routeStats.push({ page: name, cached: nav.cached, llmCalls: nav.llmCalls, ms: nav.ms });
+      emit({ type: "route", goal: name, cached: nav.cached, llmCalls: nav.llmCalls, ms: nav.ms });
+      console.log(`   ${name}: ${nav.cached ? "⚡ cached (0 calls)" : `🔎 explored (${nav.llmCalls} calls)`} ${nav.ms}ms`);
+    }
+    if (f !== "index.html" && !page.url().endsWith(f)) await page.goto(`${site.url}/${f}`, { waitUntil: "load" }); // safety
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(250);
     headBuf[f] = await page.screenshot();
     await writePng(path.join(shotDir("head"), `${f}.png`), headBuf[f]);
-    streamFrame({ action: "captured", intent: `Captured the ${name} page`, url: `${site.url}/${f}` }, headBuf[f]);
+    streamFrame({ action: "captured", intent: `Captured the ${name} page`, url: `${site.url}/${f}` }, headBuf[f], false);
   }
   await browser.close();
   await site.close();
@@ -179,7 +191,7 @@ export async function githubReview(repo, prNumber, { onEvent, post = true } = {}
     }
   }
   emit({ type: "report", verdict: scope.verdict, classification: scope.classification, url: pr.url, posted });
-  return { pr, scope, comparisons, code_review, changedFiles, body, posted };
+  return { pr, scope, comparisons, code_review, changedFiles, body, posted, routeStats };
 }
 
 function renderComment(pr, scope, comparisons, cr, changedFiles) {

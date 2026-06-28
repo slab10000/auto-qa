@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getMetrics, getAnalyses } from "@/lib/cockpit";
 import { getMainMemory } from "@/lib/memory";
 import { Badge, Sev, Sparkline } from "@/app/_components/ui";
+import { ControlRoom } from "@/app/_components/control-room";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,9 @@ export default async function OverviewPage() {
         })}
       </div>
 
+      {/* LIVE CONTROL ROOM — watch Computer Use drive the app, with a Re-run button */}
+      <ControlRoom metrics={{ screens: m.screens, contracts: m.contracts, skills: m.skills, routes: m.routes }} />
+
       {/* ANALYSES */}
       <div style={{ display: "flex", alignItems: "center", gap: 11, margin: "30px 0 13px" }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", animation: "pulseI 1.8s infinite" }} />
@@ -146,6 +150,33 @@ export default async function OverviewPage() {
               <div className="acc-body">
                 {a.description && (
                   <p style={{ color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.6, margin: "12px 0 0" }}>{a.description}</p>
+                )}
+
+                {(a.navigation || a.reusedSession) && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+                    {a.navigation && (
+                      <span
+                        style={{
+                          fontFamily: "var(--mono)",
+                          fontSize: 11,
+                          padding: "4px 10px",
+                          borderRadius: 7,
+                          color: a.navigation.usedSkills ? "var(--green)" : "var(--accent)",
+                          background: a.navigation.usedSkills ? "rgba(52,211,153,.08)" : "rgba(124,131,255,.08)",
+                          border: `1px solid ${a.navigation.usedSkills ? "rgba(52,211,153,.3)" : "rgba(124,131,255,.3)"}`,
+                        }}
+                      >
+                        {a.navigation.usedSkills
+                          ? `⚡ replayed ${a.navigation.cachedPages} learned route${a.navigation.cachedPages === 1 ? "" : "s"} · 0 model calls`
+                          : `🔎 explored ${a.navigation.exploredPages} page${a.navigation.exploredPages === 1 ? "" : "s"} fresh`}
+                      </span>
+                    )}
+                    {a.reusedSession && (
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 11, padding: "4px 10px", borderRadius: 7, color: "var(--green)", background: "rgba(52,211,153,.08)", border: "1px solid rgba(52,211,153,.3)" }}>
+                        ♻ reused managed-agent session
+                      </span>
+                    )}
+                  </div>
                 )}
 
                 {a.comparisons.length > 0 && (

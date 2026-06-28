@@ -15,13 +15,10 @@ export const TARGET_PAGES = [
   { file: "tasks.html", id: "tasks", name: "Tasks" },
   { file: "contact.html", id: "contact", name: "Contact" },
 ];
-// The behavior contract learned on onboarding (a nav the agent re-verifies on PRs).
-export const CONTRACT_NAV = {
-  fromFile: "index.html",
-  screen: "Home",
-  goal: "Click the “Store” link in the top navigation bar to open the Store page.",
-  action: "Click the Store link in the top nav",
-};
+// The natural-language goal used to reach a page via the top nav. onboard learns + caches a
+// route for each non-Home page; reviews replay the SAME goal/key (0 model calls when unchanged).
+export const navGoal = (name) =>
+  `Click the "${name}" link in the top navigation bar to open the ${name} page.`;
 
 // The Computer Use tool, attached to every interaction in a browse loop.
 export const CU_TOOL = {
