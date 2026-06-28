@@ -50,7 +50,7 @@ export default async function MemoryPage() {
       {mem.screens.length === 0 && (
         <div className="empty" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <span>No product memory yet — auto·qa hasn’t learned slab10000/test-app.</span>
-          <Link href="/run?start=onboard" className="btn btn-primary">▶ Onboard slab10000/test-app</Link>
+          <Link href="/cockpit?start=onboard" className="btn btn-primary">▶ Onboard slab10000/test-app</Link>
           <span style={{ fontSize: 11, color: "var(--faint)", fontFamily: "var(--mono)" }}>
             clones the repo, drives every page with Computer Use, and writes the baseline
           </span>

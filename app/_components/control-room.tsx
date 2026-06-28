@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 
 type Ev = any;
+type Cmd = "review" | "onboard" | "merge";
 const mono: React.CSSProperties = { fontFamily: "var(--mono)" };
 
 // Embedded live "control room": watch Computer Use drive the app, the steps it takes, the skills
@@ -15,8 +15,12 @@ export function ControlRoom({
   const [events, setEvents] = useState<Ev[]>([]);
   const [running, setRunning] = useState(false);
   const esRef = useRef<EventSource | null>(null);
+  const runningRef = useRef(false);
+  const startedRef = useRef(false);
 
-  const start = (cmd: "review" | "onboard") => {
+  const start = (cmd: Cmd) => {
+    if (runningRef.current) return;
+    runningRef.current = true;
     esRef.current?.close();
     setEvents([]);
     setRunning(true);
@@ -27,11 +31,31 @@ export function ControlRoom({
       try { ev = JSON.parse(e.data); } catch { return; }
       if (ev.type === "log") return;
       setEvents((prev) => [...prev, ev]);
-      if (ev.type === "exit" || ev.type === "error" || ev.type === "done") { es.close(); setRunning(false); }
+      if (ev.type === "exit" || ev.type === "error" || ev.type === "done") { es.close(); runningRef.current = false; setRunning(false); }
     };
-    es.onerror = () => { es.close(); setRunning(false); };
+    es.onerror = () => { es.close(); runningRef.current = false; setRunning(false); };
   };
   useEffect(() => () => esRef.current?.close(), []);
+
+  // Auto-start from /cockpit?start=onboard|review|merge (deep links) and listen for in-page
+  // triggers (the header Onboard button, the ON MERGE "Approve & merge" action).
+  useEffect(() => {
+    if (!startedRef.current) {
+      const s = new URLSearchParams(window.location.search).get("start");
+      if (s === "review" || s === "onboard" || s === "merge") {
+        startedRef.current = true;
+        window.history.replaceState({}, "", "/cockpit");
+        start(s);
+      }
+    }
+    const onRun = (e: Event) => {
+      const cmd = (e as CustomEvent).detail as Cmd;
+      if (cmd === "review" || cmd === "onboard" || cmd === "merge") start(cmd);
+    };
+    window.addEventListener("autoqa-run", onRun);
+    return () => window.removeEventListener("autoqa-run", onRun);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const steps = events.filter((e) => e.type === "step");
   const framed = [...steps].reverse().find((s) => s.shot);
@@ -176,9 +200,6 @@ export function ControlRoom({
             </div>
           )}
 
-          {!running && (
-            <Link href="/run" style={{ display: "inline-block", marginTop: 12, ...mono, fontSize: 11, color: "var(--accent-2)" }}>open full live view →</Link>
-          )}
         </div>
       </div>
     </div>

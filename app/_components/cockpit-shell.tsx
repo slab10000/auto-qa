@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { Mark, Wordmark } from "./ui";
 
@@ -15,7 +15,13 @@ const NAV = [
 
 export function CockpitShell({ repo, children }: { repo: string; children: ReactNode }) {
   const path = usePathname();
+  const router = useRouter();
   const isActive = (href: string) => (href === "/cockpit" ? path === "/cockpit" : path.startsWith(href));
+  // Trigger a run in the Overview control room: dispatch in-page when already there, else navigate.
+  const go = (cmd: "onboard" | "review" | "merge") => {
+    if (path === "/cockpit") window.dispatchEvent(new CustomEvent("autoqa-run", { detail: cmd }));
+    else router.push(`/cockpit?start=${cmd}`);
+  };
 
   return (
     <div className="fx-root">
@@ -74,26 +80,6 @@ export function CockpitShell({ repo, children }: { repo: string; children: React
           <span style={{ flex: 1 }} />
 
           <Link
-            href="/run"
-            style={{
-              margin: "0 7px 12px",
-              padding: 13,
-              border: "1px solid rgba(124,131,255,.26)",
-              background: "rgba(124,131,255,.07)",
-              borderRadius: 12,
-              display: "block",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", animation: "pulseI 1.8s infinite" }} />
-              <span className="mono" style={{ fontSize: 10, letterSpacing: ".08em", color: "var(--accent-ink)" }}>WATCH IT THINK</span>
-            </div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.45 }}>
-              ▶ Trigger a live review and watch the agent drive the app in real time.
-            </div>
-          </Link>
-
-          <Link
             href="/"
             style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 9px", color: "var(--faint)", fontSize: 13 }}
           >
@@ -121,7 +107,7 @@ export function CockpitShell({ repo, children }: { repo: string; children: React
             <span className="mono" style={{ fontSize: 12.5, color: "var(--faint)" }}>/&nbsp;main</span>
             <span style={{ flex: 1 }} />
             <Link
-              href="/run"
+              href="/cockpit"
               className="mono"
               style={{
                 display: "inline-flex",
@@ -136,9 +122,9 @@ export function CockpitShell({ repo, children }: { repo: string; children: React
               }}
             >
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulseG 2s infinite" }} />
-              LIVE RUN
+              CONTROL ROOM
             </Link>
-            <Link href="/run?start=onboard" className="btn" style={{ fontSize: 13.5, padding: "8px 14px" }}>⟳ Onboard</Link>
+            <button type="button" onClick={() => go("onboard")} className="btn" style={{ fontSize: 13.5, padding: "8px 14px" }}>⟳ Onboard</button>
             <Link href="/" className="btn btn-light" style={{ fontSize: 13.5, padding: "8px 15px" }}>＋ New repo</Link>
           </header>
 

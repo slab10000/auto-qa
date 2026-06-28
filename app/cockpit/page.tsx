@@ -3,6 +3,7 @@ import { getMetrics, getAnalyses } from "@/lib/cockpit";
 import { getMainMemory } from "@/lib/memory";
 import { Badge, Sev, Sparkline, ScreenShot } from "@/app/_components/ui";
 import { ControlRoom } from "@/app/_components/control-room";
+import { RunTrigger } from "@/app/_components/run-trigger";
 
 export const dynamic = "force-dynamic";
 
@@ -120,10 +121,7 @@ export default async function OverviewPage() {
       </div>
 
       {analyses.length === 0 ? (
-        <div className="empty">
-          No analyses yet — trigger a review from{" "}
-          <Link href="/run?start=review" style={{ color: "var(--accent-2)" }}>Watch it think</Link>.
-        </div>
+        <div className="empty">No analyses yet — trigger one with the ▶ Re-run review button above.</div>
       ) : (
         <div>
           {analyses.map((a, i) => (
@@ -284,7 +282,7 @@ export default async function OverviewPage() {
                       </div>
                     )}
                     {!a.onMerge.merged && (
-                      <Link href="/run?start=merge" className="btn btn-ghost" style={{ marginTop: 13 }}>✓ Approve &amp; merge → main</Link>
+                      <RunTrigger cmd="merge" className="btn btn-ghost" style={{ marginTop: 13 }}>✓ Approve &amp; merge → main</RunTrigger>
                     )}
                   </div>
                 )}
