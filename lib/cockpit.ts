@@ -121,7 +121,14 @@ export async function getFeaturedReview(): Promise<Featured | null> {
 
 /* ---------- analyses (Overview list) ---------- */
 
-export type Comparison = { screen: string; changed: boolean; severity: string; summary: string };
+export type Comparison = {
+  screen: string;
+  changed: boolean;
+  severity: string;
+  summary: string;
+  before?: string | null; // evidence() url (main baseline)
+  after?: string | null; // evidence() url (this PR)
+};
 export type Analysis = {
   key: string;
   source: "local" | "github";
@@ -216,12 +223,17 @@ export async function getAnalyses(): Promise<Analysis[]> {
       tookMs: r.took_ms ?? null,
       generatedAt: r.generated_at ?? null,
       changedFiles: r.changed_files ?? [],
-      comparisons: (r.visual_comparisons ?? []).map((c: any) => ({
-        screen: c.screen,
-        changed: !!c.changed,
-        severity: c.severity,
-        summary: c.summary,
-      })),
+      comparisons: (r.visual_comparisons ?? []).map((c: any) => {
+        const id = (c.screen || "").toLowerCase();
+        return {
+          screen: c.screen,
+          changed: !!c.changed,
+          severity: c.severity,
+          summary: c.summary,
+          before: r.evidence?.main?.[id] ? evidence(r.evidence.main[id]) : null,
+          after: r.evidence?.pr?.[id] ? evidence(r.evidence.pr[id]) : null,
+        };
+      }),
       scopeIn: r.scope_analysis?.in_scope ?? [],
       scopeOut: r.scope_analysis?.out_of_scope ?? [],
       codeReview: r.code_review

@@ -4,6 +4,7 @@ import { getMainMemory } from "@/lib/memory";
 import { Badge, Sev, Sparkline, ScreenShot } from "@/app/_components/ui";
 import { ControlRoom } from "@/app/_components/control-room";
 import { RunTrigger } from "@/app/_components/run-trigger";
+import { Zoomable } from "@/app/_components/zoomable";
 
 export const dynamic = "force-dynamic";
 
@@ -180,12 +181,35 @@ export default async function OverviewPage() {
                 {a.comparisons.length > 0 && (
                   <div className="acc-sec">
                     <div className="k">Results · per-page visual diff</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       {a.comparisons.map((c) => (
-                        <div key={c.screen} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                          <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--accent-ink)", background: "rgba(124,131,255,.1)", border: "1px solid rgba(124,131,255,.24)", padding: "3px 9px", borderRadius: 6, flex: "0 0 auto" }}>{c.screen}</span>
-                          <Sev changed={c.changed} severity={c.severity} />
-                          <span style={{ fontSize: 12.5, color: "var(--muted-2)" }}>{c.summary || "no change"}</span>
+                        <div key={c.screen}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--accent-ink)", background: "rgba(124,131,255,.1)", border: "1px solid rgba(124,131,255,.24)", padding: "3px 9px", borderRadius: 6, flex: "0 0 auto" }}>{c.screen}</span>
+                            <Sev changed={c.changed} severity={c.severity} />
+                            <span style={{ fontSize: 12.5, color: "var(--muted-2)" }}>{c.summary || "no change"}</span>
+                          </div>
+                          {c.changed && c.before && c.after && (
+                            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 12, marginTop: 10 }}>
+                              <figure style={{ margin: 0 }}>
+                                <figcaption style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--faint)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>main baseline</figcaption>
+                                <Zoomable src={c.before} caption={`${c.screen} · main baseline`}>
+                                  <ScreenShot src={c.before} url={a.repo || "main"} height={150} />
+                                </Zoomable>
+                              </figure>
+                              <figure style={{ margin: 0 }}>
+                                <figcaption style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--faint)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>this PR</figcaption>
+                                <Zoomable src={c.after} caption={`${c.screen} · ${a.branch || "PR"}`}>
+                                  <ScreenShot
+                                    src={c.after}
+                                    url={a.branch || "PR"}
+                                    height={150}
+                                    outline={c.severity === "high" ? "1px solid rgba(248,113,113,.45)" : "1px solid rgba(251,191,36,.4)"}
+                                  />
+                                </Zoomable>
+                              </figure>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -266,9 +290,13 @@ export default async function OverviewPage() {
                             <div key={b.screen} style={{ width: 240 }}>
                               <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--faint)", marginBottom: 6 }}>{b.screen}</div>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 7, alignItems: "center" }}>
-                                <ScreenShot src={b.before} url="main baseline" height={92} chrome={false} />
+                                <Zoomable src={b.before} caption={`${b.screen} · main baseline`}>
+                                  <ScreenShot src={b.before} url="main baseline" height={92} chrome={false} />
+                                </Zoomable>
                                 <span style={{ color: "var(--green)", fontSize: 16 }}>→</span>
-                                <ScreenShot src={b.after} url={a.branch || "pr"} height={92} chrome={false} outline="1px solid rgba(52,211,153,.4)" />
+                                <Zoomable src={b.after} caption={`${b.screen} · ${a.branch || "pr"}`}>
+                                  <ScreenShot src={b.after} url={a.branch || "pr"} height={92} chrome={false} outline="1px solid rgba(52,211,153,.4)" />
+                                </Zoomable>
                               </div>
                             </div>
                           ))}
