@@ -1,0 +1,18 @@
+{
+  "id": "dashboard-settings-entry",
+  "screen": "Dashboard",
+  "action": "Click the Settings button",
+  "expected_result": {
+    "type": "navigation",
+    "url_changed": true,
+    "destination_url": "/settings.html",
+    "visual_anchor": "Settings heading visible"
+  },
+  "evidence": {
+    "before": "screenshots/main/dashboard.png",
+    "after": "screenshots/main/settings.png"
+  },
+  "confidence": 0.92,
+  "learned_from": "main",
+  "last_verified": "2026-06-28T01:13:32.341Z"
+}

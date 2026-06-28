@@ -1,0 +1,10 @@
+{
+  "name": "auto-qa-spike",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway spikes to validate Gemini auth + Computer Use before building.",
+  "dependencies": {
+    "@google/genai": "^2.10.0",
+    "playwright": "*"
+  }
+}
