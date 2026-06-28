@@ -75,7 +75,9 @@ function buildRows(data: TreeData): Row[] {
     },
   ];
 
-  const prNodes: Row[] = data.prs.map((p, i) => ({
+  // Newest PR on top (latest first), so the graph reads top→bottom like a commit history.
+  const prsByRecency = [...data.prs].sort((a, b) => b.num - a.num);
+  const prNodes: Row[] = prsByRecency.map((p, i) => ({
     id: p.id, kind: "pr", lane: 1 + (i % 2), idx: 0,
     hueVar: PR_VAR[i % PR_VAR.length], hueHex: PR_HEX[i % PR_HEX.length],
     chip: p.branch || p.id,
