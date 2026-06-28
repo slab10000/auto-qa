@@ -2,7 +2,7 @@
 // This is the continual-learning core — only accepted behavior becomes canonical, and
 // every merged branch leaves a visual-history snapshot under screenshots/<branch>/.
 import path from "node:path";
-import { existsSync, cpSync, readdirSync, mkdirSync } from "node:fs";
+import { existsSync, cpSync, readdirSync, mkdirSync, copyFileSync } from "node:fs";
 import { AUTOQA, paths, readJSON, writeJSON } from "./memory.mjs";
 
 const stamp = () => new Date().toISOString();
@@ -21,12 +21,25 @@ export async function mergePR(prId = "pr-1", { onEvent } = {}) {
 
   emit({ type: "phase", phase: "merge", message: `Approving & folding ${branch} into main` });
 
-  // 1) Visual history: snapshot the PR's screens under screenshots/<branch>/
-  const prScreensDir = paths.prScreens(prId);
-  const baselines = copyDir(prScreensDir, paths.screenshots(branch));
-
-  // 2) The PR's screens become the new accepted main baselines
-  copyDir(prScreensDir, paths.screenshots("main"));
+  // 1+2) Graduate the PR's screens: each becomes the new main baseline AND a per-branch
+  // visual-history snapshot under screenshots/<branch>/. Works for the GitHub flow (evidence
+  // points at the captured head shots) and the local flow (prs/<id>/screenshots/).
+  const baselines = [];
+  const evPr = report.evidence?.pr || {};
+  const mainDir = paths.screenshots("main");
+  const branchDir = paths.screenshots(branch);
+  mkdirSync(mainDir, { recursive: true });
+  mkdirSync(branchDir, { recursive: true });
+  for (const [id, rel] of Object.entries(evPr)) {
+    const src = path.join(AUTOQA, rel);
+    if (!existsSync(src)) continue;
+    copyFileSync(src, path.join(mainDir, `${id}.png`));
+    copyFileSync(src, path.join(branchDir, `${id}.png`));
+    baselines.push(`${id}.png`);
+  }
+  // also fold any locally-captured PR screens (sample-app-style flows)
+  copyDir(paths.prScreens(prId), branchDir);
+  copyDir(paths.prScreens(prId), mainDir);
 
   // 3) Behavior contracts: any mismatch is now the ACCEPTED behavior (human approved the merge)
   const contractUpdates = [];

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getMetrics, getAnalyses } from "@/lib/cockpit";
 import { getMainMemory } from "@/lib/memory";
-import { Badge, Sev, Sparkline } from "@/app/_components/ui";
+import { Badge, Sev, Sparkline, ScreenShot } from "@/app/_components/ui";
 import { ControlRoom } from "@/app/_components/control-room";
 
 export const dynamic = "force-dynamic";
@@ -243,6 +243,49 @@ export default async function OverviewPage() {
                         <span key={s.name} style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--accent-ink)", background: "rgba(124,131,255,.08)", border: "1px solid rgba(124,131,255,.22)", padding: "5px 10px", borderRadius: 8 }}>✦ {s.name}</span>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {a.onMerge && (a.onMerge.baselineUpdates.length > 0 || a.skills.length > 0) && (
+                  <div className="acc-sec" style={{ background: "rgba(52,211,153,.04)", border: "1px solid rgba(52,211,153,.2)", borderRadius: 12, padding: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11, flexWrap: "wrap" }}>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".1em", color: "var(--green)" }}>
+                        {a.onMerge.merged ? "MERGED → MAIN" : "ON MERGE → MAIN"}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--muted-2)" }}>
+                        {a.onMerge.merged
+                          ? `folded into the baseline ${a.onMerge.mergedAt ?? ""}`
+                          : `${a.branch || "this branch"}'s accepted changes fold into main`}
+                      </span>
+                    </div>
+                    {a.onMerge.baselineUpdates.length > 0 && (
+                      <>
+                        <div style={{ fontSize: 12, color: "var(--muted-3)", marginBottom: 10 }}>
+                          {a.onMerge.baselineUpdates.length} screen baseline{a.onMerge.baselineUpdates.length === 1 ? "" : "s"} would update:
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+                          {a.onMerge.baselineUpdates.map((b) => (
+                            <div key={b.screen} style={{ width: 240 }}>
+                              <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--faint)", marginBottom: 6 }}>{b.screen}</div>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 7, alignItems: "center" }}>
+                                <ScreenShot src={b.before} url="main baseline" height={92} chrome={false} />
+                                <span style={{ color: "var(--green)", fontSize: 16 }}>→</span>
+                                <ScreenShot src={b.after} url={a.branch || "pr"} height={92} chrome={false} outline="1px solid rgba(52,211,153,.4)" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {a.skills.length > 0 && (
+                      <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--muted-2)" }}>
+                        <span style={{ color: "var(--accent-2)" }}>✦</span> graduates {a.skills.length} skill
+                        {a.skills.length === 1 ? "" : "s"}: {a.skills.map((s) => s.name).join(", ")}
+                      </div>
+                    )}
+                    {!a.onMerge.merged && (
+                      <Link href="/run?start=merge" className="btn btn-ghost" style={{ marginTop: 13 }}>✓ Approve &amp; merge → main</Link>
+                    )}
                   </div>
                 )}
 

@@ -146,6 +146,12 @@ export type Analysis = {
   githubUrl: string | null;
   navigation: { usedSkills: boolean; cachedPages: number; exploredPages: number } | null;
   reusedSession: boolean;
+  // What this branch contributes to main when merged (and whether it already did).
+  onMerge: {
+    merged: boolean;
+    mergedAt: string | null;
+    baselineUpdates: { screen: string; before: string | null; after: string | null }[];
+  } | null;
 };
 
 // Parse the markdown comment auto-qa posts (our own stable format) into structured fields.
@@ -237,6 +243,20 @@ export async function getAnalyses(): Promise<Analysis[]> {
           }
         : null,
       reusedSession: !!r.code_review?.reused_session,
+      onMerge: {
+        merged: !!r.merged,
+        mergedAt: r.merged_at ?? null,
+        baselineUpdates: (r.visual_comparisons ?? [])
+          .filter((c: any) => c.changed)
+          .map((c: any) => {
+            const id = (c.screen || "").toLowerCase();
+            return {
+              screen: c.screen,
+              before: r.evidence?.main?.[id] ? evidence(r.evidence.main[id]) : null,
+              after: r.evidence?.pr?.[id] ? evidence(r.evidence.pr[id]) : null,
+            };
+          }),
+      },
     });
   }
 
@@ -270,6 +290,21 @@ export async function getAnalyses(): Promise<Analysis[]> {
       githubUrl: `https://github.com/${g.repo}/pull/${prNumber}`,
       navigation: null,
       reusedSession: false,
+      onMerge: {
+        merged: false,
+        mergedAt: null,
+        baselineUpdates: p.comparisons
+          .filter((c) => c.changed)
+          .map((c) => {
+            const file = g.base.find((s) => s.screen === c.screen.toLowerCase())?.rel;
+            const head = g.head.find((s) => s.screen === c.screen.toLowerCase())?.rel;
+            return {
+              screen: c.screen,
+              before: file ? evidence(file) : null,
+              after: head ? evidence(head) : null,
+            };
+          }),
+      },
     });
   }
 
