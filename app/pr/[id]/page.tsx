@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getPRReport, getPRSkills, evidence } from "@/lib/memory";
 import { buildRunView } from "@/lib/cockpit";
-import { CockpitShell } from "@/app/_components/cockpit-shell";
+import { CockpitFrame } from "@/app/_components/cockpit-frame";
 import { PIPELINE, PipelineRail, Badge, Sev, ScreenShot, verdictClass } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +39,8 @@ const kindLabelStyle = {
   fontSize: 10,
   letterSpacing: ".08em",
   color: "var(--accent-ink)",
-  background: "rgba(124,131,255,.1)",
-  border: "1px solid rgba(124,131,255,.24)",
+  background: "rgba(var(--accent-rgb),.1)",
+  border: "1px solid rgba(var(--accent-rgb),.24)",
   padding: "3px 9px",
   borderRadius: 6,
 } as const;
@@ -76,14 +76,14 @@ export default async function PRPage(props: { params: Promise<{ id: string }> })
 
   if (!report) {
     return (
-      <CockpitShell repo="slab10000/test-app">
+      <CockpitFrame repo="slab10000/test-app">
         <Link href="/cockpit/current" style={backBtnStyle}>
           <span>←</span> back
         </Link>
         <h2 style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 22, marginTop: 18 }}>
           PR not found
         </h2>
-      </CockpitShell>
+      </CockpitFrame>
     );
   }
 
@@ -91,7 +91,7 @@ export default async function PRPage(props: { params: Promise<{ id: string }> })
   const v = buildRunView(report, prSkills);
 
   return (
-    <CockpitShell repo="slab10000/test-app">
+    <CockpitFrame repo="slab10000/test-app">
       <Link href="/cockpit/current" style={backBtnStyle}>
         <span>←</span> Back to Current PRs
       </Link>
@@ -259,8 +259,8 @@ export default async function PRPage(props: { params: Promise<{ id: string }> })
                         fontFamily: "var(--mono)",
                         fontSize: 11,
                         color: "var(--accent-ink)",
-                        background: "rgba(124,131,255,.1)",
-                        border: "1px solid rgba(124,131,255,.24)",
+                        background: "rgba(var(--accent-rgb),.1)",
+                        border: "1px solid rgba(var(--accent-rgb),.24)",
                         padding: "3px 9px",
                         borderRadius: 6,
                         flex: "0 0 auto",
@@ -322,7 +322,7 @@ export default async function PRPage(props: { params: Promise<{ id: string }> })
                     style={{
                       marginTop: 11,
                       background: "var(--panel-2)",
-                      border: "1px solid rgba(124,131,255,.3)",
+                      border: "1px solid rgba(var(--accent-rgb),.3)",
                       borderRadius: 11,
                       overflow: "hidden",
                     }}
@@ -421,8 +421,8 @@ export default async function PRPage(props: { params: Promise<{ id: string }> })
                         fontFamily: "var(--mono)",
                         fontSize: 12,
                         color: "var(--accent-ink)",
-                        background: "rgba(124,131,255,.08)",
-                        border: "1px solid rgba(124,131,255,.22)",
+                        background: "rgba(var(--accent-rgb),.08)",
+                        border: "1px solid rgba(var(--accent-rgb),.22)",
                         padding: "7px 11px",
                         borderRadius: 8,
                       }}
@@ -437,7 +437,7 @@ export default async function PRPage(props: { params: Promise<{ id: string }> })
           </div>
         </div>
       </div>
-    </CockpitShell>
+    </CockpitFrame>
   );
 }
 

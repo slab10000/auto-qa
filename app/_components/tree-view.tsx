@@ -16,9 +16,11 @@ import { Zoomable } from "@/app/_components/zoomable";
 const PANEL_W = 440;
 const ROW_H = 82;
 const TOP = 12;
-const LANE_X = [54, 122, 190, 258];
-const HUE_VAR = ["var(--accent)", "#f6a64a", "#9b8bff", "#5ac8fa"]; // 2D (css)
-const HUE_HEX = ["#7c83ff", "#f6a64a", "#9b8bff", "#5ac8fa"]; // 3D (three.js)
+const LANE_X = [52, 104, 156]; // lane 0 = main spine, 1/2 = PR branch columns
+const MAIN_VAR = "var(--accent)"; // teal accent spine = main, like the design
+const MAIN_HEX = "#37d6b0";
+const PR_VAR = ["#f6a64a", "#9b8bff", "#5ac8fa"]; // per-PR branch hues (2D / css)
+const PR_HEX = ["#f6a64a", "#9b8bff", "#5ac8fa"]; // per-PR branch hues (3D / three.js)
 
 type Row = {
   id: string;
@@ -34,6 +36,7 @@ type Row = {
   selectable: boolean;
   target: string;
   activeId: string;
+  branchFrom?: string; // (PR rows) the spine node this branch curves out of
 };
 
 function verdictColor(v: string): string {
@@ -47,70 +50,59 @@ function verdictColor(v: string): string {
 function buildRows(data: TreeData): Row[] {
   const c = data.main.counts;
   const repoShort = data.repo.split("/")[1] || data.repo;
+
+  // The lane-0 spine, top→bottom: the current baseline (HEAD) then the history that
+  // produced it. PRs are interleaved ABOVE the spine node they branch out of, so each
+  // branch is a short, local curve (no fan-out / crossing).
+  const spine: Row[] = [
+    {
+      id: "main", kind: "main", lane: 0, idx: 0, hueVar: MAIN_VAR, hueHex: MAIN_HEX,
+      chip: "main", title: "Current baseline",
+      sub: `${c.screens} screens · ${c.contracts} contracts · ${c.skills} skills`,
+      verdict: "HEAD", selectable: true, target: "main", activeId: "main",
+    },
+    {
+      id: "main-onboard", kind: "hist", lane: 0, idx: 0, hueVar: MAIN_VAR, hueHex: MAIN_HEX,
+      chip: "", title: `Onboarded ${repoShort}`,
+      sub: `learned ${c.screens} screens · ${c.routes} routes`,
+      verdict: "", selectable: false, target: "main", activeId: "",
+    },
+    {
+      id: "main-init", kind: "hist", lane: 0, idx: 0, hueVar: MAIN_VAR, hueHex: MAIN_HEX,
+      chip: "", title: `Connected ${data.repo}`,
+      sub: "repo linked · baseline captured",
+      verdict: "", selectable: false, target: "main", activeId: "",
+    },
+  ];
+
+  const prNodes: Row[] = data.prs.map((p, i) => ({
+    id: p.id, kind: "pr", lane: 1 + (i % 2), idx: 0,
+    hueVar: PR_VAR[i % PR_VAR.length], hueHex: PR_HEX[i % PR_HEX.length],
+    chip: p.branch || p.id,
+    title: `#${p.num} · ${p.title}`,
+    sub: `${p.verdict} · ${p.classification || "—"}${p.took ? ` · ${p.took}` : ""}`,
+    verdict: p.verdict, selectable: true, target: p.id, activeId: p.id,
+  }));
+
+  // Interleave: PR[k] sits directly above spine[k] and branches from it.
   const rows: Row[] = [];
-  rows.push({
-    id: "main",
-    kind: "main",
-    lane: 0,
-    idx: 0,
-    hueVar: HUE_VAR[0],
-    hueHex: HUE_HEX[0],
-    chip: "main",
-    title: "Current baseline",
-    sub: `${c.screens} screens · ${c.contracts} contracts · ${c.skills} skills`,
-    verdict: "HEAD",
-    selectable: true,
-    target: "main",
-    activeId: "main",
-  });
-  data.prs.forEach((p, i) => {
-    const lane = 1 + (i % 3);
-    rows.push({
-      id: p.id,
-      kind: "pr",
-      lane,
-      idx: rows.length,
-      hueVar: HUE_VAR[lane],
-      hueHex: HUE_HEX[lane],
-      chip: p.branch || p.id,
-      title: `#${p.num} · ${p.title}`,
-      sub: `${p.verdict} · ${p.classification || "—"}${p.took ? ` · ${p.took}` : ""}`,
-      verdict: p.verdict,
-      selectable: true,
-      target: p.id,
-      activeId: p.id,
-    });
-  });
-  rows.push({
-    id: "main-onboard",
-    kind: "hist",
-    lane: 0,
-    idx: rows.length,
-    hueVar: HUE_VAR[0],
-    hueHex: HUE_HEX[0],
-    chip: "",
-    title: `Onboarded ${repoShort}`,
-    sub: `learned ${c.screens} screens · ${c.routes} routes`,
-    verdict: "",
-    selectable: false,
-    target: "main",
-    activeId: "",
-  });
-  rows.push({
-    id: "main-init",
-    kind: "hist",
-    lane: 0,
-    idx: rows.length,
-    hueVar: HUE_VAR[0],
-    hueHex: HUE_HEX[0],
-    chip: "",
-    title: `Connected ${data.repo}`,
-    sub: "repo linked · baseline captured",
-    verdict: "",
-    selectable: false,
-    target: "main",
-    activeId: "",
-  });
+  let pi = 0;
+  for (let si = 0; si < spine.length; si++) {
+    if (pi < prNodes.length) {
+      prNodes[pi].branchFrom = spine[si].id;
+      rows.push(prNodes[pi]);
+      pi++;
+    }
+    rows.push(spine[si]);
+  }
+  // Overflow (more PRs than spine nodes): stack the rest below, off the last spine node.
+  while (pi < prNodes.length) {
+    prNodes[pi].branchFrom = spine[spine.length - 1].id;
+    rows.push(prNodes[pi]);
+    pi++;
+  }
+
+  rows.forEach((r, i) => (r.idx = i));
   return rows;
 }
 
@@ -154,7 +146,7 @@ export function TreeView({ data }: { data: TreeData }) {
                   padding: "5px 10px",
                   border: "none",
                   cursor: "pointer",
-                  background: mode === mdv ? "rgba(124,131,255,.16)" : "transparent",
+                  background: mode === mdv ? "rgba(var(--accent-rgb),.16)" : "transparent",
                   color: mode === mdv ? "var(--accent-ink)" : "var(--faint)",
                 }}
               >
@@ -164,14 +156,7 @@ export function TreeView({ data }: { data: TreeData }) {
           </div>
         </div>
 
-        <div
-          style={{
-            border: "1px solid var(--line)",
-            borderRadius: 16,
-            background: "linear-gradient(180deg, rgba(124,131,255,.03), transparent 45%), var(--panel-2)",
-            overflow: "hidden",
-          }}
-        >
+        <div style={{ overflow: "hidden" }}>
           {mode === "2d" ? (
             <Graph2D rows={rows} sel={sel} onSelect={onSelect} height={gh} />
           ) : (
@@ -194,17 +179,24 @@ export function TreeView({ data }: { data: TreeData }) {
 /* ---------------- 2D graph ---------------- */
 
 function Graph2D({ rows, sel, onSelect, height }: { rows: Row[]; sel: string; onSelect: (t: string) => void; height: number }) {
-  const last = rows.length - 1;
+  const idxById: Record<string, number> = {};
+  rows.forEach((r) => (idxById[r.id] = r.idx));
+  const spineRows = rows.filter((r) => r.lane === 0);
+  const sFirst = spineRows.length ? spineRows[0].idx : 0;
+  const sLast = spineRows.length ? spineRows[spineRows.length - 1].idx : 0;
   const edges: { d: string; c: string; w: number; o: number }[] = [];
-  // main spine (lane 0) from baseline down to the last history node
-  edges.push({ d: `M${LANE_X[0]} ${cy(0)} L${LANE_X[0]} ${cy(last)}`, c: "var(--accent)", w: 2.5, o: 0.5 });
-  // each PR branches off the baseline node
+  // main spine (lane 0): one straight vertical line through baseline + history nodes
+  edges.push({ d: `M${LANE_X[0]} ${cy(sFirst)} L${LANE_X[0]} ${cy(sLast)}`, c: MAIN_VAR, w: 2.5, o: 0.55 });
+  // each PR branches (short curve) from the spine node directly below it
   rows
     .filter((r) => r.kind === "pr")
     .forEach((r) => {
+      const fromIdx = r.branchFrom != null && idxById[r.branchFrom] != null ? idxById[r.branchFrom] : sFirst;
       const x = LANE_X[r.lane];
-      const mid = (cy(0) + cy(r.idx)) / 2;
-      edges.push({ d: `M${LANE_X[0]} ${cy(0)} C${LANE_X[0]} ${mid} ${x} ${mid} ${x} ${cy(r.idx)}`, c: r.hueVar, w: 2.5, o: 0.85 });
+      const a = cy(fromIdx);
+      const b = cy(r.idx);
+      const mid = (a + b) / 2;
+      edges.push({ d: `M${LANE_X[0]} ${a} C${LANE_X[0]} ${mid} ${x} ${mid} ${x} ${b}`, c: r.hueVar, w: 2.5, o: 0.9 });
     });
 
   return (
@@ -254,7 +246,7 @@ function Graph2D({ rows, sel, onSelect, height }: { rows: Row[]; sel: string; on
               <div
                 style={{
                   position: "absolute",
-                  left: LANE_X[r.lane] + 22,
+                  left: 74,
                   right: 12,
                   top: 8,
                   bottom: 8,
@@ -401,13 +393,14 @@ function Graph3D({ rows, sel, onSelect }: { rows: Row[]; sel: string; onSelect: 
         };
         // spine through lane-0 nodes
         const spine = rows.filter((r) => r.lane === 0).map((r) => pos[r.id]);
-        if (spine.length > 1) addLine(spine, 0x7c83ff);
-        // PR branches from baseline
+        if (spine.length > 1) addLine(spine, 0x34d399);
+        // each PR branches from the spine node it sits above
         rows
           .filter((r) => r.kind === "pr")
           .forEach((r) => {
-            const a = pos["main"];
+            const a = pos[r.branchFrom || "main"];
             const b = pos[r.id];
+            if (!a || !b) return;
             const curve = new THREE.CubicBezierCurve3(a, new THREE.Vector3(a.x, (a.y + b.y) / 2, 0), new THREE.Vector3(b.x, (a.y + b.y) / 2, 0), b);
             addLine(curve.getPoints(36), parseInt(r.hueHex.slice(1), 16));
           });
@@ -548,7 +541,7 @@ function Graph3D({ rows, sel, onSelect }: { rows: Row[]; sel: string; onSelect: 
         width: PANEL_W,
         height: 480,
         cursor: "grab",
-        background: "radial-gradient(300px 300px at 45% 42%, rgba(124,131,255,.07), transparent 72%)",
+        background: "radial-gradient(300px 300px at 45% 42%, rgba(var(--accent-rgb),.07), transparent 72%)",
       }}
     />
   );
@@ -629,7 +622,7 @@ function MainInspector({ main }: { main: TreeMain }) {
         {stat(
           c.routes,
           "cached routes",
-          <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--accent-ink)", border: "1px solid rgba(124,131,255,.3)", padding: "1px 6px", borderRadius: 5 }}>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--accent-ink)", border: "1px solid rgba(var(--accent-rgb),.3)", padding: "1px 6px", borderRadius: 5 }}>
             0 calls
           </span>
         )}
@@ -685,8 +678,8 @@ function MainInspector({ main }: { main: TreeMain }) {
                 width: 30,
                 height: 30,
                 borderRadius: 9,
-                background: "rgba(124,131,255,.13)",
-                border: "1px solid rgba(124,131,255,.3)",
+                background: "rgba(var(--accent-rgb),.13)",
+                border: "1px solid rgba(var(--accent-rgb),.3)",
                 display: "grid",
                 placeItems: "center",
                 color: "var(--accent-2)",
@@ -715,8 +708,8 @@ function MainInspector({ main }: { main: TreeMain }) {
                 fontFamily: "var(--mono)",
                 fontSize: 10,
                 color: "var(--accent-ink)",
-                background: "rgba(124,131,255,.1)",
-                border: "1px solid rgba(124,131,255,.28)",
+                background: "rgba(var(--accent-rgb),.1)",
+                border: "1px solid rgba(var(--accent-rgb),.28)",
                 padding: "4px 9px",
                 borderRadius: 7,
               }}
@@ -759,7 +752,7 @@ function PRInspector({ pr, repo }: { pr: TreePR; repo: string }) {
               </span>
             )}
             <span style={{ color: "var(--faint)", fontSize: 13 }}>→</span>
-            <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--accent-ink)", background: "rgba(124,131,255,.1)", border: "1px solid rgba(124,131,255,.3)", padding: "3px 9px", borderRadius: 7 }}>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--accent-ink)", background: "rgba(var(--accent-rgb),.1)", border: "1px solid rgba(var(--accent-rgb),.3)", padding: "3px 9px", borderRadius: 7 }}>
               {pr.base}
             </span>
             {pr.classification && <span style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: vColor }}>· {pr.classification}</span>}
@@ -802,8 +795,8 @@ function PRInspector({ pr, repo }: { pr: TreePR; repo: string }) {
               fontFamily: "var(--mono)",
               fontSize: 12,
               color: "var(--accent)",
-              background: "rgba(124,131,255,.08)",
-              border: "1px solid rgba(124,131,255,.28)",
+              background: "rgba(var(--accent-rgb),.08)",
+              border: "1px solid rgba(var(--accent-rgb),.28)",
               padding: "7px 12px",
               borderRadius: 9,
             }}

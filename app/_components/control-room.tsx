@@ -157,7 +157,7 @@ export function ControlRoom({
     ? null
     : cachedNow
       ? { label: "⚡ Using learned routes", sub: "replaying cached navigation · 0 model calls", color: "var(--green)", rgb: "52,211,153" }
-      : { label: "🔎 Learning from scratch", sub: "exploring with Gemini Computer Use", color: "var(--accent)", rgb: "124,131,255" };
+      : { label: "🔎 Learning from scratch", sub: "exploring with Gemini Computer Use", color: "var(--accent)", rgb: "var(--accent-rgb)" };
 
   const status = running
     ? phase?.message || phase?.phase || "starting…"
@@ -168,7 +168,7 @@ export function ControlRoom({
   return (
     <div
       style={{
-        background: "linear-gradient(180deg, rgba(124,131,255,.05), transparent 60%), var(--panel)",
+        background: "linear-gradient(180deg, rgba(var(--accent-rgb),.05), transparent 60%), var(--panel)",
         border: "1px solid var(--line-frame)",
         borderRadius: 16,
         padding: 18,
@@ -192,7 +192,7 @@ export function ControlRoom({
             {watch.watching ? `watching ${watch.repo}` : "watcher offline"}
           </span>
         )}
-        <span style={{ ...mono, fontSize: 11.5, color: running ? "var(--accent-ink)" : "var(--muted-3)", padding: "5px 11px", border: `1px solid ${running ? "rgba(124,131,255,.3)" : "var(--line)"}`, borderRadius: 999, background: running ? "rgba(124,131,255,.06)" : "transparent" }}>
+        <span style={{ ...mono, fontSize: 11.5, color: running ? "var(--accent-ink)" : "var(--muted-3)", padding: "5px 11px", border: `1px solid ${running ? "rgba(var(--accent-rgb),.3)" : "var(--line)"}`, borderRadius: 999, background: running ? "rgba(var(--accent-rgb),.06)" : "transparent" }}>
           {status}
         </span>
         <button className="btn btn-primary" disabled={running} onClick={() => start("review")} style={{ padding: "8px 14px" }}>▶ Re-run review</button>
@@ -201,7 +201,7 @@ export function ControlRoom({
 
       {/* PR watcher caught a new commit */}
       {detected && (
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginTop: 14, padding: "9px 13px", borderRadius: 11, background: "rgba(124,131,255,.09)", border: "1px solid rgba(124,131,255,.34)" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginTop: 14, padding: "9px 13px", borderRadius: 11, background: "rgba(var(--accent-rgb),.09)", border: "1px solid rgba(var(--accent-rgb),.34)" }}>
           <span style={{ ...mono, fontWeight: 600, fontSize: 12, color: "var(--accent-ink)" }}>
             {running ? `🔔 New commit on PR #${detected.pr} — reviewing live` : `✓ Reviewed PR #${detected.pr}`}
           </span>
@@ -274,7 +274,7 @@ export function ControlRoom({
               <div style={{ ...mono, fontSize: 9.5, letterSpacing: ".08em", color: "var(--faint)", marginBottom: 7 }}>SKILLS WRITTEN</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                 {skillsLearned.map((s, i) => (
-                  <span key={i} style={{ ...mono, fontSize: 11.5, color: "var(--accent-ink)", background: "rgba(124,131,255,.08)", border: "1px solid rgba(124,131,255,.22)", padding: "4px 9px", borderRadius: 7 }}>✦ {s.name}</span>
+                  <span key={i} style={{ ...mono, fontSize: 11.5, color: "var(--accent-ink)", background: "rgba(var(--accent-rgb),.08)", border: "1px solid rgba(var(--accent-rgb),.22)", padding: "4px 9px", borderRadius: 7 }}>✦ {s.name}</span>
                 ))}
               </div>
             </div>

@@ -187,9 +187,9 @@ export function PipelineRail({
           position: "relative",
           zIndex: 1,
           ...(active
-            ? { color: "#0a0b0f", background: "#9aa0ff", boxShadow: "0 0 0 4px rgba(124,131,255,.16)", animation: "pulseI 1.6s infinite" }
+            ? { color: "#0a0b0f", background: "var(--accent-3)", boxShadow: "0 0 0 4px rgba(var(--accent-rgb),.16)", animation: "pulseI 1.6s infinite" }
             : done
-              ? { color: "var(--accent-ink)", background: "rgba(124,131,255,.2)", border: "1px solid rgba(124,131,255,.5)" }
+              ? { color: "var(--accent-ink)", background: "rgba(var(--accent-rgb),.2)", border: "1px solid rgba(var(--accent-rgb),.5)" }
               : { color: "var(--faint)", background: "var(--panel-2)", border: "1px solid var(--line-frame)" }),
         };
         const lab: CSSProperties = {

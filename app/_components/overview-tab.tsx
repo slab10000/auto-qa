@@ -65,7 +65,7 @@ export function OverviewTab({ m, mem, analyses }: { m: Metrics; mem: Mem; analys
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginTop: 24 }}>
         {kpiCard("REPLAY SPEED", replaySpeed, "0 model calls · cached route replay", { subColor: "var(--green)" })}
         {kpiCard("SCREENS LEARNED", m.screens, "explored with Computer Use", {
-          border: "rgba(124,131,255,.3)",
+          border: "rgba(var(--accent-rgb),.3)",
           valueColor: "var(--accent-2)",
         })}
         {kpiCard("CONTRACTS LEARNED", m.contracts, "behavior contracts in baseline")}
@@ -148,8 +148,8 @@ export function OverviewTab({ m, mem, analyses }: { m: Metrics; mem: Mem; analys
                           padding: "4px 10px",
                           borderRadius: 7,
                           color: a.navigation.usedSkills ? "var(--green)" : "var(--accent)",
-                          background: a.navigation.usedSkills ? "rgba(52,211,153,.08)" : "rgba(124,131,255,.08)",
-                          border: `1px solid ${a.navigation.usedSkills ? "rgba(52,211,153,.3)" : "rgba(124,131,255,.3)"}`,
+                          background: a.navigation.usedSkills ? "rgba(52,211,153,.08)" : "rgba(var(--accent-rgb),.08)",
+                          border: `1px solid ${a.navigation.usedSkills ? "rgba(52,211,153,.3)" : "rgba(var(--accent-rgb),.3)"}`,
                         }}
                       >
                         {a.navigation.usedSkills
@@ -172,7 +172,7 @@ export function OverviewTab({ m, mem, analyses }: { m: Metrics; mem: Mem; analys
                       {a.comparisons.map((c) => (
                         <div key={c.screen}>
                           <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-                            <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--accent-ink)", background: "rgba(124,131,255,.1)", border: "1px solid rgba(124,131,255,.24)", padding: "3px 9px", borderRadius: 6, flex: "0 0 auto" }}>
+                            <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--accent-ink)", background: "rgba(var(--accent-rgb),.1)", border: "1px solid rgba(var(--accent-rgb),.24)", padding: "3px 9px", borderRadius: 6, flex: "0 0 auto" }}>
                               {c.screen}
                             </span>
                             <Sev changed={c.changed} severity={c.severity} />
@@ -251,7 +251,7 @@ export function OverviewTab({ m, mem, analyses }: { m: Metrics; mem: Mem; analys
                     <div className="k">Skills written this run</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {a.skills.map((s) => (
-                        <span key={s.name} style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--accent-ink)", background: "rgba(124,131,255,.08)", border: "1px solid rgba(124,131,255,.22)", padding: "5px 10px", borderRadius: 8 }}>
+                        <span key={s.name} style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--accent-ink)", background: "rgba(var(--accent-rgb),.08)", border: "1px solid rgba(var(--accent-rgb),.22)", padding: "5px 10px", borderRadius: 8 }}>
                           ✦ {s.name}
                         </span>
                       ))}

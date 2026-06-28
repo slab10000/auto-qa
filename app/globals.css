@@ -28,10 +28,11 @@
 
   /* accent (indigo) */
   --accent: #7c83ff;
+  --accent-rgb: 124, 131, 255;
   --accent-2: #8c92ff;
   --accent-3: #9aa0ff;
   --accent-ink: #c7caff;
-  --accent-soft: rgba(124, 131, 255, 0.1);
+  --accent-soft: rgba(var(--accent-rgb), 0.1);
 
   /* status */
   --green: #34d399;
@@ -45,6 +46,42 @@
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
+/* ============================================================
+   Cockpit theme — the Claude Design "v2" teal palette. Scoped to
+   the cockpit (the landing keeps the indigo :root above). Every
+   component reads these tokens (incl. rgba(var(--accent-rgb), …)),
+   so overriding them here re-skins the whole cockpit.
+   ============================================================ */
+.cockpit-theme {
+  --bg: #080a0d;
+  --panel: #0f1217;
+  --panel-2: #13171e;
+  --panel-hover: #171c24;
+
+  --line: #1d232b;
+  --line-soft: #181d25;
+  --line-frame: #283039;
+
+  --ink: #e7eaef;
+  --ink-2: #c8cfda;
+  --muted: #9aa3b1;
+  --muted-2: #8d97a6;
+  --muted-3: #8d97a6;
+  --faint: #5a6473;
+
+  --accent: #37d6b0;
+  --accent-rgb: 55, 214, 176;
+  --accent-2: #5fe3c4;
+  --accent-3: #7eecd3;
+  --accent-ink: #a9f3e0;
+  --accent-soft: rgba(var(--accent-rgb), 0.1);
+
+  --green: #37d6a0;
+  --green-ink: #a9efd0;
+  --amber: #f6b14a;
+  --red: #ff6b81;
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -56,7 +93,7 @@ body {
 }
 a { color: inherit; text-decoration: none; }
 button { font-family: var(--sans); }
-::selection { background: rgba(124, 131, 255, 0.32); color: #fff; }
+::selection { background: rgba(var(--accent-rgb), 0.32); color: #fff; }
 
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb { background: #232838; border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
@@ -67,7 +104,7 @@ button { font-family: var(--sans); }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pulseG { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.55); } 70% { box-shadow: 0 0 0 7px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
-@keyframes pulseI { 0% { box-shadow: 0 0 0 0 rgba(124,131,255,.55); } 70% { box-shadow: 0 0 0 8px rgba(124,131,255,0); } 100% { box-shadow: 0 0 0 0 rgba(124,131,255,0); } }
+@keyframes pulseI { 0% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb),.55); } 70% { box-shadow: 0 0 0 8px rgba(var(--accent-rgb),0); } 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb),0); } }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .15; } }
 @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -79,8 +116,8 @@ button { font-family: var(--sans); }
 .fx-glow {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(1100px 620px at 72% -8%, rgba(124,131,255,.18), transparent 60%),
-    radial-gradient(820px 520px at 6% 2%, rgba(124,131,255,.08), transparent 55%),
+    radial-gradient(1100px 620px at 72% -8%, rgba(var(--accent-rgb),.18), transparent 60%),
+    radial-gradient(820px 520px at 6% 2%, rgba(var(--accent-rgb),.08), transparent 55%),
     radial-gradient(760px 760px at 102% 104%, rgba(52,211,153,.055), transparent 60%);
 }
 .fx-grid {
@@ -99,7 +136,7 @@ button { font-family: var(--sans); }
 .mono { font-family: var(--mono); }
 .scanline {
   position: absolute; left: 0; right: 0; top: 0; height: 32px;
-  background: linear-gradient(180deg, rgba(124,131,255,.5), transparent);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),.5), transparent);
   animation: scanY 3.2s cubic-bezier(.4,0,.5,1) infinite; pointer-events: none;
 }
 
@@ -108,7 +145,7 @@ button { font-family: var(--sans); }
   width: 28px; height: 28px; border-radius: 9px; flex: 0 0 auto;
   background: linear-gradient(145deg, #8c92ff, #5b62e0);
   display: grid; place-items: center;
-  box-shadow: 0 6px 18px rgba(124,131,255,.42), inset 0 1px 0 rgba(255,255,255,.3);
+  box-shadow: 0 6px 18px rgba(var(--accent-rgb),.42), inset 0 1px 0 rgba(255,255,255,.3);
   color: #fff; font-size: 15px; line-height: 1;
 }
 .mark.sm { width: 27px; height: 27px; font-size: 14px; }
@@ -126,10 +163,10 @@ button { font-family: var(--sans); }
 .btn:disabled { opacity: .5; cursor: default; }
 .btn-primary {
   color: #0a0b0f; border: none;
-  background: linear-gradient(145deg, #9aa0ff, #7c83ff);
-  box-shadow: 0 6px 18px rgba(124,131,255,.4);
+  background: linear-gradient(145deg, var(--accent-3), var(--accent));
+  box-shadow: 0 6px 18px rgba(var(--accent-rgb),.4);
 }
-.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 24px rgba(124,131,255,.5); }
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 24px rgba(var(--accent-rgb),.5); }
 .btn-light { color: #0a0b0f; background: #eef1f7; border: none; }
 .btn-light:hover:not(:disabled) { background: #fff; transform: translateY(-1px); }
 .btn-ghost {
@@ -149,9 +186,9 @@ button { font-family: var(--sans); }
 .badge.pass     { color: var(--green); background: rgba(52,211,153,.12);  border-color: rgba(52,211,153,.5); }
 .badge.warn     { color: var(--amber); background: rgba(251,191,36,.12);  border-color: rgba(251,191,36,.5); }
 .badge.fail     { color: var(--red);   background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.5); }
-.badge.running  { color: var(--accent); background: rgba(124,131,255,.12); border-color: rgba(124,131,255,.5); }
+.badge.running  { color: var(--accent); background: rgba(var(--accent-rgb),.12); border-color: rgba(var(--accent-rgb),.5); }
 .badge.baseline { color: var(--muted-3); background: rgba(139,147,166,.1); border-color: rgba(139,147,166,.42); }
-.badge.accent   { color: var(--accent-ink); background: rgba(124,131,255,.1); border-color: rgba(124,131,255,.26); }
+.badge.accent   { color: var(--accent-ink); background: rgba(var(--accent-rgb),.1); border-color: rgba(var(--accent-rgb),.26); }
 
 /* severity chip */
 .sev { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line-frame); color: var(--muted-3); }
@@ -195,7 +232,7 @@ button { font-family: var(--sans); }
 .navlink:hover { color: var(--ink); background: rgba(255,255,255,.03); }
 .navlink .g { color: var(--faint); font-size: 15px; width: 18px; text-align: center; }
 .navlink.active {
-  border-color: rgba(124,131,255,.32); background: rgba(124,131,255,.13);
+  border-color: rgba(var(--accent-rgb),.32); background: rgba(var(--accent-rgb),.13);
   color: var(--ink); font-weight: 600;
 }
 .navlink.active .g { color: var(--accent-2); }
@@ -244,7 +281,7 @@ pre.skill {
 .lp-canvas[data-webgl="off"], .lp-canvas[data-webgl="error"] {
   background:
     radial-gradient(900px 600px at 60% 55%, rgba(38,166,65,.18), transparent 60%),
-    radial-gradient(700px 500px at 50% 70%, rgba(124,131,255,.10), transparent 60%), #060709;
+    radial-gradient(700px 500px at 50% 70%, rgba(var(--accent-rgb),.10), transparent 60%), #060709;
 }
 
 /* hover-hint overlay (connector lines + made-up PR labels) */

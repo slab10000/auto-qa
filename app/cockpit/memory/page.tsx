@@ -157,8 +157,8 @@ export default async function MemoryPage() {
                   fontFamily: "var(--mono)",
                   fontSize: 11,
                   color: "var(--accent-ink)",
-                  background: "rgba(124,131,255,.1)",
-                  border: "1px solid rgba(124,131,255,.26)",
+                  background: "rgba(var(--accent-rgb),.1)",
+                  border: "1px solid rgba(var(--accent-rgb),.26)",
                   padding: "3px 9px",
                   borderRadius: 7,
                 }}
@@ -274,8 +274,8 @@ export default async function MemoryPage() {
                       fontFamily: "var(--mono)",
                       fontSize: 11,
                       color: "var(--accent-ink)",
-                      background: "rgba(124,131,255,.1)",
-                      border: "1px solid rgba(124,131,255,.26)",
+                      background: "rgba(var(--accent-rgb),.1)",
+                      border: "1px solid rgba(var(--accent-rgb),.26)",
                       padding: "3px 9px",
                       borderRadius: 7,
                     }}

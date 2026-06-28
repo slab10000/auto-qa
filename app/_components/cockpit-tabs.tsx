@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 // Two-mode cockpit shell: "Overview" (the live control room + analyses, unchanged) and
 // "Tree" (the new graph + inspector visualizer). Both subtrees stay mounted and are merely
@@ -7,6 +7,16 @@ import { useState, type ReactNode } from "react";
 // user is looking at the Tree.
 export function CockpitTabs({ overview, tree }: { overview: ReactNode; tree: ReactNode }) {
   const [tab, setTab] = useState<"overview" | "tree">("overview");
+
+  // The header's Onboard / Run review buttons switch us to Overview so the live run is visible.
+  useEffect(() => {
+    const onTab = (e: Event) => {
+      const t = (e as CustomEvent).detail;
+      if (t === "overview" || t === "tree") setTab(t);
+    };
+    window.addEventListener("autoqa-tab", onTab);
+    return () => window.removeEventListener("autoqa-tab", onTab);
+  }, []);
 
   const TabBtn = ({ id, label, hint, glyph }: { id: "overview" | "tree"; label: string; hint: string; glyph: string }) => {
     const active = tab === id;
@@ -20,8 +30,8 @@ export function CockpitTabs({ overview, tree }: { overview: ReactNode; tree: Rea
           gap: 9,
           padding: "9px 16px",
           borderRadius: 11,
-          border: `1px solid ${active ? "rgba(124,131,255,.4)" : "var(--line)"}`,
-          background: active ? "rgba(124,131,255,.13)" : "var(--panel)",
+          border: `1px solid ${active ? "rgba(var(--accent-rgb),.4)" : "var(--line)"}`,
+          background: active ? "rgba(var(--accent-rgb),.13)" : "var(--panel)",
           color: active ? "var(--ink)" : "var(--muted-3)",
           fontFamily: "var(--sans)",
           fontSize: 14.5,

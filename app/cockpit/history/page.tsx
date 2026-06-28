@@ -47,8 +47,8 @@ export default async function HistoryPage() {
                       gap: 5,
                       fontSize: 10.5,
                       color: "var(--accent-2)",
-                      background: "rgba(124,131,255,.1)",
-                      border: "1px solid rgba(124,131,255,.24)",
+                      background: "rgba(var(--accent-rgb),.1)",
+                      border: "1px solid rgba(var(--accent-rgb),.24)",
                       padding: "2px 8px",
                       borderRadius: 6,
                     }}
