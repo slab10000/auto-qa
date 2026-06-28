@@ -21,5 +21,8 @@ test-results/
 # sample target app is its own git repo (a test target the agent clones)
 /sample-app/
 
+# Claude Code local state / transient worktrees
+.claude/worktrees/
+
 # OS
 .DS_Store
