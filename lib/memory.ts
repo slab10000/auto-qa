@@ -68,6 +68,19 @@ export async function getPRReport(id: string): Promise<any | null> {
   return readJSONFile<any>(path.join(AUTOQA, "prs", id, "report.json"), null);
 }
 
+// Learned navigation routes — cached Computer Use action sequences replayed on later passes.
+export async function getRoutes(): Promise<{ goal: string; actions: any[]; expected_url?: string }[]> {
+  const dir = path.join(AUTOQA, "main", "routes");
+  let files: string[] = [];
+  try { files = (await fs.readdir(dir)).filter((f) => f.endsWith(".json")); } catch { return []; }
+  const out: any[] = [];
+  for (const f of files) {
+    const r = await readJSONFile<any>(path.join(dir, f), null);
+    if (r) out.push(r);
+  }
+  return out;
+}
+
 // Visual changelog: one folder of screens per merged branch (excluding the live "main").
 export async function getScreenshotHistory(): Promise<{ branch: string; shots: string[] }[]> {
   const dir = path.join(AUTOQA, "screenshots");

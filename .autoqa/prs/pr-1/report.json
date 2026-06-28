@@ -7,7 +7,7 @@
     "branch": "pr-1-billing-copy",
     "base": "main"
   },
-  "generated_at": "2026-06-28T01:36:18.147Z",
+  "generated_at": "2026-06-28T02:35:47.509Z",
   "verdict": "FAIL",
   "behavior_checks": [
     {
@@ -38,13 +38,13 @@
     {
       "screen": "settings",
       "changed": true,
-      "summary": "The settings view has been redesigned from a dedicated full-page view to a modal dialog overlay on the dashboard. Additionally, the 'Dark mode' toggle option is missing in the new modal version.",
+      "summary": "The Settings interface has been redesigned from a full-page view to a modal overlay on top of the dashboard. Additionally, the 'Dark mode' option is missing from the settings list.",
       "severity": "high"
     },
     {
       "screen": "billing",
       "changed": true,
-      "summary": "The subtext under the Billing header was updated with new copy describing the benefits of upgrading.",
+      "summary": "The description text below the main heading has been updated with new copy.",
       "severity": "low"
     }
   ],
@@ -52,26 +52,32 @@
     "verdict": "FAIL",
     "classification": "suspicious",
     "in_scope": [
-      "Updating the Free plan description text on the Billing page (billing.html) to clarify what upgrading unlocks."
+      "Updating the Free plan billing copy on the Billing page (billing.html)"
     ],
     "out_of_scope": [
-      "Refactoring the Settings button in index.html from an anchor link (settings.html) to a button element.",
-      "Adding a settings modal component (HTML markup and inline CSS classes) to index.html.",
-      "Adding JavaScript functions (openSettings and closeSettings) to index.html to manage modal state."
+      "Changing the Settings entry point on index.html from a link pointing to settings.html to a button that triggers a modal",
+      "Adding the Settings modal HTML markup and backdrop to index.html",
+      "Adding inline JavaScript functions (openSettings and closeSettings) to index.html to toggle the modal state"
     ],
-    "reasoning": "The PR includes a major, undocumented behavioral change. While the billing copy update is in-scope, the modification to index.html entirely changes how the Settings feature works (converting a page navigation into a modal). This represents severe scope creep and must be rejected and split into a separate PR for proper QA and tracking."
+    "reasoning": "The PR contains major functional changes to the homepage (index.html), changing the Settings navigation behavior into an in-page modal interface. This is completely unrelated to the stated scope of updating the billing copy on the Billing page and represents undocumented scope creep."
   },
   "code_review": {
     "scope_match": "scope_creep",
     "risk": "medium",
-    "summary": "The pull request contains significant changes to the homepage (index.html), converting the Settings link into an in-page modal. This behavioral and structural change is completely outside the stated scope of updating the billing copy on the billing page.",
+    "summary": "The PR contains significant out-of-scope changes. While the billing copy update in billing.html aligns with the stated scope, index.html has been modified to replace page navigation to settings.html with an in-page modal dialog, introducing undocumented UI behavior and JavaScript functions.",
     "concerns": [
-      "Changes in index.html are entirely unrelated to the stated scope of updating the billing copy on billing.html.",
-      "Replaces standard page navigation to settings.html with an in-page modal, which might break bookmarks, direct links, or SEO, and leaves settings.html potentially orphaned.",
-      "Introduces new UI elements, inline Javascript event handlers, and a modal backdrop that were not declared, reviewed, or tested for this task."
+      "Modifications to index.html are entirely outside the declared scope of updating billing copy.",
+      "Changing the Settings entry from a link (navigating to settings.html) to a button opening a modal alters user workflow and could break existing routing or deep links.",
+      "Introduces new JavaScript functions (openSettings, closeSettings) and HTML structure for a modal in index.html without prior design approval or test updates.",
+      "Leaves the status of settings.html unclear, potentially creating dead code if it is no longer used."
     ],
-    "environment_id": "c53b5f49-df55-44f1-abac-425b0dd2a86d",
+    "environment_id": "d7afc092-ac1d-4f34-81d7-432b16389d31",
     "ran_in": "remote managed agent · antigravity"
+  },
+  "route_metrics": {
+    "cached": true,
+    "llmCalls": 0,
+    "ms": 447
   },
   "changed_files": [
     "billing.html",

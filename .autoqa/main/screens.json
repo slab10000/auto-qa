@@ -1,19 +1,19 @@
 {
   "learned_from": "main",
-  "learned_at": "2026-06-28T01:13:53.884Z",
+  "learned_at": "2026-06-28T02:35:20.642Z",
   "screens": [
     {
       "id": "dashboard",
       "name": "Dashboard",
       "url": "/",
-      "purpose": "This is the dashboard screen, designed to provide a high-level overview of active projects, open tasks, and team members in the user's workspace.",
+      "purpose": "This is a workspace dashboard screen designed to provide a quick overview of active projects, open tasks, and team members.",
       "screenshot": "screenshots/main/dashboard.png"
     },
     {
       "id": "settings",
       "name": "Settings",
       "url": "/settings.html",
-      "purpose": "This is the Settings screen, which allows users to manage their workspace preferences such as notifications, security, and display options.",
+      "purpose": "This is the Settings screen, which is used to manage workspace preferences like email notifications, security authentication, and dark mode display options.",
       "screenshot": "screenshots/main/settings.png"
     },
     {

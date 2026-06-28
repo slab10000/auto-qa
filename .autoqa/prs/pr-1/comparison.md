@@ -4,20 +4,20 @@
 
 ## Behavior contract replay
 - Action: Click the Settings button on Dashboard
-- Main (expected): modal
+- Main (expected): navigation → /settings.html
 - PR (observed): modal
-- Result: ✅ match
+- Result: ❌ MISMATCH
 
 ## Visual comparison (main vs PR)
-- **dashboard** — no change: No changes were detected between the baseline and the PR version.
-- **settings** — no change: No changes were detected between the baseline and the PR screenshots.
-- **billing** — no change: The baseline and PR versions are identical with no visual or structural differences detected.
+- **dashboard** — no change: No changes detected between the baseline and the PR version.
+- **settings** — changed (high): The Settings interface has been redesigned from a full-page view to a modal overlay on top of the dashboard. Additionally, the 'Dark mode' option is missing from the settings list.
+- **billing** — changed (low): The description text below the main heading has been updated with new copy.
 
 ## Scope analysis
-The PR's stated scope is strictly limited to updating copy on the Billing page. However, the changes in index.html completely alter the application's behavior for the Settings entry point, refactoring it from standard page-to-page navigation to a modal-based interaction, complete with new UI elements and JavaScript. This unrelated feature refactor is highly suspicious for a simple copy-update PR and must be rejected and split into a separate, properly scoped pull request.
+The PR contains major functional changes to the homepage (index.html), changing the Settings navigation behavior into an in-page modal interface. This is completely unrelated to the stated scope of updating the billing copy on the Billing page and represents undocumented scope creep.
 
-- **In scope:** Updating the Free plan description text in billing.html to clarify upgrade benefits
-- **Out of scope:** Changing the Settings navigation in index.html from a page link (settings.html) to an inline modal; Adding the settings modal HTML structure (modal-backdrop, modal, rows, toggles) to index.html; Adding JavaScript functions (openSettings and closeSettings) to index.html to manage modal state
+- **In scope:** Updating the Free plan billing copy on the Billing page (billing.html)
+- **Out of scope:** Changing the Settings entry point on index.html from a link pointing to settings.html to a button that triggers a modal; Adding the Settings modal HTML markup and backdrop to index.html; Adding inline JavaScript functions (openSettings and closeSettings) to index.html to toggle the modal state
 
 ## Changed files
 - billing.html

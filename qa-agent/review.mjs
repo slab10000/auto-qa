@@ -7,6 +7,8 @@ import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { serveStatic } from "./serve.mjs";
 import { runGoal, reason } from "./gemini.mjs";
+import { reachGoal } from "./navigate.mjs";
+import { routeKey } from "./routes.mjs";
 import { codeReview } from "./code-review.mjs";
 import { VIEWPORT } from "./config.mjs";
 import { ROOT, AUTOQA, paths, readJSON, writeJSON, writeText, writePng } from "./memory.mjs";
@@ -103,11 +105,14 @@ export async function reviewPR(prId = "pr-1", { onEvent } = {}) {
   streamShot({ action: "goto", intent: "Open the Dashboard", url: page.url() }, dashBuf);
 
   const beforeUrl = page.url();
-  await runGoal(page, `${contract.action} on the ${contract.screen}.`, {
-    onStep: (s) => console.log(`    ${s.action} — ${s.intent}`),
+  const nav = await reachGoal(page, `${contract.action} on the ${contract.screen}.`, {
+    cacheKey: routeKey(`${contract.screen}-${contract.action}`),
+    onStep: (s) => console.log(`    ${s.action} — ${s.intent}${s.cached ? " (cached)" : ""}`),
     onShot: (_i, buf, entry) => streamShot(entry, buf),
   });
   const afterUrl = page.url();
+  emit({ type: "route", goal: contract.action, cached: nav.cached, llmCalls: nav.llmCalls, ms: nav.ms });
+  console.log(`    route: ${nav.cached ? `⚡ cached — 0 model calls, ${nav.ms}ms` : `🔎 explored — ${nav.llmCalls} model calls, ${nav.ms}ms`}`);
   const settingsBuf = await prShot("settings");
   const observed = {
     type: afterUrl !== beforeUrl ? "navigation" : "modal",
@@ -208,6 +213,7 @@ export async function reviewPR(prId = "pr-1", { onEvent } = {}) {
     visual_comparisons: comparisons,
     scope_analysis: scope,
     code_review,
+    route_metrics: { cached: nav.cached, llmCalls: nav.llmCalls, ms: nav.ms },
     changed_files: changedFiles,
     evidence: {
       main: { dashboard: "screenshots/main/dashboard.png", settings: "screenshots/main/settings.png", billing: "screenshots/main/billing.png" },

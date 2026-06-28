@@ -3,12 +3,32 @@
 
 const SETTLE_MS = 400;
 
+// Signature of the element under a viewport point — used to verify a cached action still targets
+// the same thing before replaying it (deterministic, no model call).
+export const sigAt = (page, x, y) =>
+  page.evaluate(
+    ({ x, y }) => {
+      const el = document.elementFromPoint(x, y);
+      if (!el) return null;
+      const t = el.closest("a,button,[role],input,select,textarea") || el;
+      return { tag: t.tagName, text: (t.textContent || t.value || "").trim().slice(0, 40) };
+    },
+    { x, y }
+  );
+
 export async function executeAction(page, fc, viewport) {
   const a = fc.arguments || {};
   const toPx = (x, y) => ({
     x: Math.round((x / 1000) * viewport.width),
     y: Math.round((y / 1000) * viewport.height),
   });
+
+  // Record what we're about to interact with, so a cached replay can verify it later.
+  let signature = null;
+  if (a.x != null && a.y != null) {
+    const px = toPx(a.x, a.y);
+    signature = await sigAt(page, px.x, px.y);
+  }
 
   try {
     switch (fc.name) {
@@ -84,7 +104,7 @@ export async function executeAction(page, fc, viewport) {
         return { ok: false, note: `unhandled action '${fc.name}'`, raw: a };
     }
     await page.waitForTimeout(SETTLE_MS); // let navigations / animations settle
-    return { ok: true };
+    return { ok: true, signature };
   } catch (err) {
     return { ok: false, error: String(err?.message || err) };
   }

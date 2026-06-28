@@ -16,7 +16,7 @@ const TYPES = {
   ".ico": "image/x-icon",
 };
 
-export function serveStatic(dir) {
+export function serveStatic(dir, port = 0) {
   const root = path.resolve(dir);
   const server = http.createServer(async (req, res) => {
     try {
@@ -37,7 +37,7 @@ export function serveStatic(dir) {
   });
 
   return new Promise((resolve) => {
-    server.listen(0, "127.0.0.1", () => {
+    server.listen(port, "127.0.0.1", () => {
       const { port } = server.address();
       resolve({
         url: `http://127.0.0.1:${port}`,

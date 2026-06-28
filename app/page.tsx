@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getMainMemory, listPRReports, getScreenshotHistory, evidence } from "@/lib/memory";
+import { getMainMemory, listPRReports, getScreenshotHistory, getRoutes, evidence } from "@/lib/memory";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,7 @@ export default async function Home() {
   const mem = await getMainMemory();
   const prs = await listPRReports();
   const history = await getScreenshotHistory();
+  const routes = await getRoutes();
 
   return (
     <main className="wrap">
@@ -73,6 +74,31 @@ export default async function Home() {
               </summary>
               <pre className="skill">{sk.body}</pre>
             </details>
+          ))}
+        </section>
+      )}
+
+      {routes.length > 0 && (
+        <section className="section">
+          <h2>Learned routes · replayed without the model</h2>
+          <p className="lede" style={{ marginBottom: 16 }}>
+            The first time the agent reached a screen it explored with Computer Use; it cached the action
+            sequence (and a signature of what it clicked). Later passes verify the signature still matches and
+            <b> replay the route in milliseconds with zero model calls</b> — falling back to fresh exploration only if the UI changed.
+          </p>
+          {routes.map((r) => (
+            <div className="panel" key={r.goal}>
+              <h3>{r.goal}</h3>
+              <div className="kv">
+                <div><div className="k">replay cost</div>0 model calls</div>
+                <div><div className="k">targets</div>{r.actions?.map((a: any) => a.signature?.text).filter(Boolean).join(" → ") || "—"}</div>
+              </div>
+              <ul className="list">
+                {r.actions?.map((a: any, i: number) => (
+                  <li key={i}><span style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>{a.name}</span> — {a.intent}</li>
+                ))}
+              </ul>
+            </div>
           ))}
         </section>
       )}

@@ -50,6 +50,7 @@ export async function runGoal(page, goal, { maxSteps = MAX_STEPS, onStep, onShot
       intent: fc.arguments?.intent || "",
       url: page.url(),
       ok: exec.ok,
+      signature: exec.signature || null,
     };
     trace.push({ ...entry, screenshot: shot });
     onStep?.(entry);

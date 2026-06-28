@@ -3,6 +3,8 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { serveStatic } from "./serve.mjs";
 import { runGoal, reason } from "./gemini.mjs";
+import { reachGoal } from "./navigate.mjs";
+import { routeKey } from "./routes.mjs";
 import { VIEWPORT } from "./config.mjs";
 import { ROOT, paths, writeJSON, writeText, writePng } from "./memory.mjs";
 
@@ -35,8 +37,12 @@ export async function onboardMain(targetDir) {
   // 2) Learn the Settings-entry behavior (the contract the PR will be judged on)
   console.log("• Probing Settings entry behavior");
   const beforeUrl = page.url();
-  const settingsRun = await runGoal(page, "Click the Settings button to open settings.", { onStep: log });
+  const settingsRun = await reachGoal(page, "Click the Settings button to open settings.", {
+    cacheKey: routeKey("Dashboard-Click the Settings button"),
+    onStep: log,
+  });
   const afterUrl = page.url();
+  console.log(`    route ${settingsRun.cached ? "⚡ cached" : "🔎 explored"} — ${settingsRun.llmCalls} model calls, ${settingsRun.ms}ms`);
   await saveShot("settings", new URL(afterUrl).pathname);
   const navigated = afterUrl !== beforeUrl;
 
@@ -79,7 +85,7 @@ export async function onboardMain(targetDir) {
   await writeJSON(paths.mainScreens, { learned_from: "main", learned_at: stamp(), screens });
 
   // 5) Skills — the self-improvement artifact (teaching future runs how to test)
-  const steps = settingsRun.trace.map((t, i) => `${i + 1}. ${t.intent || t.action}`).join("\n");
+  const steps = settingsRun.actions.map((a, i) => `${i + 1}. ${a.intent || a.name}`).join("\n");
   await writeText(
     path.join(paths.mainSkills, "reach-settings.md"),
     `# Skill: Reach the Settings screen\n\n` +

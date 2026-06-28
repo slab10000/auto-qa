@@ -117,6 +117,19 @@ export default function RunPage() {
                   </div>
                 </div>
               );
+            if (e.type === "route")
+              return (
+                <div className="tl" key={i}>
+                  <div className="act">navigation route</div>
+                  <div className="tl-card">
+                    {e.cached ? (
+                      <><span className="badge pass">⚡ cached</span> replayed in {e.ms}ms · <b>0 model calls</b></>
+                    ) : (
+                      <><span className="badge">🔎 explored</span> {e.llmCalls} model calls · {e.ms}ms — route saved for next time</>
+                    )}
+                  </div>
+                </div>
+              );
             if (e.type === "skill_learned")
               return (
                 <div className="tl" key={i}>
