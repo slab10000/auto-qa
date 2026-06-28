@@ -31,6 +31,7 @@ const GRID_D = ROWS * PITCH;
 const MAX_H = 0.74; // tallest resting tile — chunky raised squares, not towers
 const HOVER_H = 0.42; // extra height under the cursor
 const HOVER_R = 1.35; // cursor influence radius (world units)
+const IDLE_MS = 2000; // real cursor away this long → autopilot fakes one
 
 // hint annotations
 const MAX_HINTS = 5;
@@ -185,6 +186,16 @@ export default function ContribGrid({ className }: { className?: string }) {
       }
     }
 
+    // autopilot tour: the busiest cells, swept left→right (ping-pong)
+    const waypoints: number[] = [];
+    for (let i = 0; i < N; i++) if (levels[i] > 0.5) waypoints.push(i);
+    waypoints.sort((a, b) => cellX[a] - cellX[b] || cellZ[a] - cellZ[b]);
+    const fake = { x: 0, z: 0, wp: 0, dir: 1, dwell: 0 };
+    if (waypoints.length) {
+      fake.x = cellX[waypoints[0]];
+      fake.z = cellZ[waypoints[0]];
+    }
+
     /* GitHub-style green ramp, from a dark empty cell to bright lime */
     const cEmpty = new THREE.Color(0x1a2621);
     const cG1 = new THREE.Color(0x0e4429);
@@ -272,6 +283,7 @@ export default function ContribGrid({ className }: { className?: string }) {
     /* ---- pointer (window-level so the wrapping <a> doesn't block it) ---- */
     const ndc = new THREE.Vector2(-2, -2);
     let inside = false;
+    let lastRealMs = performance.now();
     const ray = new THREE.Raycaster();
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const hit = new THREE.Vector3(1e3, 0, 1e3);
@@ -284,6 +296,7 @@ export default function ContribGrid({ className }: { className?: string }) {
       parallax.tx = ndc.x;
       parallax.ty = ndc.y;
       inside = true;
+      lastRealMs = performance.now();
     }
     function onLeave() {
       inside = false;
@@ -340,6 +353,34 @@ export default function ContribGrid({ className }: { className?: string }) {
       const reveal = Math.min(1, t / 1.6);
       const revEase = 1 - Math.pow(1 - reveal, 3);
 
+      // autopilot: if the real cursor has been away ~2s, fake one roaming the panel
+      const idleAuto = now - lastRealMs > IDLE_MS;
+      let hx = 1e3;
+      let hz = 1e3;
+      let active = false;
+      if (idleAuto && waypoints.length) {
+        active = true;
+        const wpTile = waypoints[fake.wp];
+        const tgx = cellX[wpTile];
+        const tgz = cellZ[wpTile];
+        const k = Math.min(1, dt * 1.6);
+        fake.x += (tgx - fake.x) * k;
+        fake.z += (tgz - fake.z) * k;
+        if (Math.hypot(tgx - fake.x, tgz - fake.z) < 0.1 && waypoints.length > 1) {
+          fake.dwell += dt;
+          if (fake.dwell > 0.7) {
+            fake.dwell = 0;
+            fake.wp += fake.dir;
+            if (fake.wp > waypoints.length - 1) { fake.wp = waypoints.length - 2; fake.dir = -1; }
+            else if (fake.wp < 0) { fake.wp = 1; fake.dir = 1; }
+          }
+        }
+        hx = fake.x + Math.sin(t * 1.3) * 0.12; // organic wobble
+        hz = fake.z + Math.cos(t * 1.1) * 0.06;
+        parallax.tx = Math.max(-1, Math.min(1, fake.x / (GRID_W * 0.5)));
+        parallax.ty = 0.12;
+      }
+
       // smooth parallax
       parallax.x += (parallax.tx - parallax.x) * Math.min(1, dt * 3);
       parallax.y += (parallax.ty - parallax.y) * Math.min(1, dt * 3);
@@ -355,14 +396,13 @@ export default function ContribGrid({ className }: { className?: string }) {
       );
       camera.lookAt(target);
 
-      // cursor → grid-plane hit
-      let hx = 1e3;
-      let hz = 1e3;
-      if (inside) {
+      // real cursor → grid-plane hit (takes over the instant you move)
+      if (!idleAuto && inside) {
         ray.setFromCamera(ndc, camera);
         if (ray.ray.intersectPlane(plane, hit)) {
           hx = hit.x;
           hz = hit.z;
+          active = true;
         }
       }
 
@@ -370,9 +410,9 @@ export default function ContribGrid({ className }: { className?: string }) {
       cands.length = 0;
 
       for (let i = 0; i < N; i++) {
-        // cursor proximity
+        // cursor proximity (real or autopilot)
         let infl = 0;
-        if (inside) {
+        if (active) {
           const dx = cellX[i] - hx;
           const dz = cellZ[i] - hz;
           const d = Math.sqrt(dx * dx + dz * dz);
