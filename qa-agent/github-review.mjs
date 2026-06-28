@@ -7,7 +7,7 @@ import { existsSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright";
 import { serveStatic } from "./serve.mjs";
 import { runGoal, reason } from "./gemini.mjs";
-import { codeReview } from "./code-review.mjs";
+import { remoteReview, remotePostComment } from "./code-review.mjs";
 import { VIEWPORT } from "./config.mjs";
 import { AUTOQA, writePng } from "./memory.mjs";
 
@@ -54,9 +54,14 @@ export async function githubReview(repo, prNumber, { onEvent, post = true } = {}
   console.log("   changed:", changedFiles.join(", "));
   emit({ type: "phase", phase: "analyze", message: "Analyzing diff", changed: changedFiles });
 
-  // Kick off the remote managed-agent code review concurrently
-  const codeReviewPromise = codeReview(pr, diff, changedFiles, { onEvent: emit }).catch((e) => ({
-    scope_match: "unclear", risk: "unknown", summary: `code review unavailable: ${e?.message || e}`, concerns: [],
+  // Kick off the remote managed agent concurrently: it clones the repo URL, RUNS the
+  // app to verify it boots, and reviews the diff — all in its own remote sandbox.
+  const codeReviewPromise = remoteReview(
+    { repo, prNumber, title: pr.title, body: pr.body, baseRef: pr.baseRefName, headRef: pr.headRefName },
+    { onEvent: emit }
+  ).catch((e) => ({
+    ran_ok: null, run_method: "unknown", run_evidence: `remote review unavailable: ${e?.message || e}`,
+    scope_match: "unclear", risk: "unknown", summary: `remote review unavailable: ${e?.message || e}`, concerns: [],
   }));
 
   const pages = Object.keys(PAGE_NAMES).filter((f) => existsSync(path.join(repoDir, f)));
@@ -134,16 +139,35 @@ export async function githubReview(repo, prNumber, { onEvent, post = true } = {}
 
   const code_review = await codeReviewPromise;
 
-  // 6) Compose + post the comment
+  // 6) Compose the comment, then post it.
+  // If AUTOQA_BOT_TOKEN is set, the remote agent posts it from the sandbox as its own
+  // bot identity (never your personal gh login); otherwise local gh posts it (fallback).
   const body = renderComment(pr, scope, comparisons, code_review, changedFiles);
+  let posted = null;
   if (post) {
     const tmp = path.join(workDir, "comment.md");
     writeFileSync(tmp, body);
-    gh(["pr", "comment", String(prNumber), "-R", repo, "--body-file", tmp]);
-    console.log(`💬 posted review to ${pr.url}`);
+    const botToken = process.env.AUTOQA_BOT_TOKEN;
+    if (botToken) {
+      try {
+        const r = await remotePostComment({ repo, prNumber, body }, { token: botToken, onEvent: emit });
+        if (!r.posted) throw new Error(r.error || "remote post returned posted:false");
+        posted = r.comment_url || pr.url;
+        console.log(`💬 remote agent posted review → ${posted}`);
+      } catch (e) {
+        console.error(`⚠️  remote post failed (${e?.message || e}); falling back to local gh`);
+        gh(["pr", "comment", String(prNumber), "-R", repo, "--body-file", tmp]);
+        posted = pr.url;
+        console.log(`💬 posted review to ${pr.url} (local gh fallback)`);
+      }
+    } else {
+      gh(["pr", "comment", String(prNumber), "-R", repo, "--body-file", tmp]);
+      posted = pr.url;
+      console.log(`💬 posted review to ${pr.url} (local gh — set AUTOQA_BOT_TOKEN to let the agent post as its own bot)`);
+    }
   }
-  emit({ type: "report", verdict: scope.verdict, classification: scope.classification, url: pr.url });
-  return { pr, scope, comparisons, code_review, changedFiles, body };
+  emit({ type: "report", verdict: scope.verdict, classification: scope.classification, url: pr.url, posted });
+  return { pr, scope, comparisons, code_review, changedFiles, body, posted };
 }
 
 function renderComment(pr, scope, comparisons, cr, changedFiles) {
@@ -153,6 +177,9 @@ function renderComment(pr, scope, comparisons, cr, changedFiles) {
     .join("\n");
   const list = (xs) => (xs && xs.length ? xs.map((x) => `- ${x}`).join("\n") : "- —");
   const concerns = (cr.concerns || []).map((x) => `- ${x}`).join("\n");
+  const runIcon = cr.ran_ok === true ? "✅" : cr.ran_ok === false ? "❌" : "❔";
+  const runState = cr.ran_ok === true ? "App boots" : cr.ran_ok === false ? "App did NOT run cleanly" : "Run status unknown";
+  const runLine = `${runIcon} **${runState}**${cr.run_method ? ` · ${cr.run_method}` : ""}${cr.run_evidence ? `\n\n${cr.run_evidence}` : ""}`;
   return `## ${emoji} auto-qa review — **${scope.verdict}** · ${scope.classification}
 
 > Stated scope: _${pr.title}_
@@ -161,6 +188,9 @@ ${scope.reasoning}
 
 ### 👁️ Visual behavior — Computer Use captured each page (main vs PR)
 ${vis}
+
+### 🚀 Did it run? — remote sandbox cloned & launched the PR build
+${runLine}
 
 ### 🧠 Code-side review — remote managed agent (Antigravity)
 **scope:** ${cr.scope_match} · **risk:** ${cr.risk}
