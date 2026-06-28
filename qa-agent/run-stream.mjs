@@ -26,3 +26,6 @@ try {
   emit({ type: "error", message: String(err?.message || err) });
   process.exitCode = 1;
 }
+// A managed-agent SDK call may still be in flight after a timeout; flush stdout + force exit
+// so the SSE stream closes instead of hanging the run.
+process.stdout.write("", () => process.exit(process.exitCode || 0));

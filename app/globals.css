@@ -213,6 +213,20 @@ pre.skill {
   color: var(--faint); font-family: var(--mono); font-size: 13px;
 }
 
+/* expandable analysis (native <details>) */
+.acc { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; transition: border-color .15s; }
+.acc + .acc { margin-top: 10px; }
+.acc[open] { border-color: var(--line-frame); }
+.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 13px; padding: 15px 18px; }
+.acc > summary::-webkit-details-marker { display: none; }
+.acc > summary:hover { background: var(--panel-2); }
+.acc[open] > summary { border-bottom: 1px solid var(--line-soft); }
+.acc .chev { color: var(--faint); transition: transform .18s; font-size: 12px; flex: 0 0 auto; }
+.acc[open] .chev { transform: rotate(90deg); }
+.acc-body { padding: 4px 18px 18px; }
+.acc-sec { margin-top: 16px; }
+.acc-sec .k { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--faint); text-transform: uppercase; margin-bottom: 9px; }
+
 @media (max-width: 860px) {
   .hide-sm { display: none !important; }
 }

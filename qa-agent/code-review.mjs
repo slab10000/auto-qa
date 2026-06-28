@@ -11,6 +11,28 @@ import { GoogleGenAI } from "@google/genai";
 const ai = new GoogleGenAI({});
 const AGENT = "antigravity-preview-05-2026";
 
+// Managed-agent calls run in a remote sandbox and can be slow (or stall); cap them so a
+// review never hangs. On timeout we fall back gracefully — the visual + scope analysis stand.
+const REMOTE_TIMEOUT_MS = Number(process.env.AUTOQA_REMOTE_TIMEOUT_MS) || 120000;
+const TIMED_OUT = Symbol("timeout");
+function withTimeout(promise, ms = REMOTE_TIMEOUT_MS) {
+  let t;
+  const timer = new Promise((resolve) => {
+    t = setTimeout(() => resolve(TIMED_OUT), ms);
+    if (t.unref) t.unref();
+  });
+  return Promise.race([Promise.resolve(promise).finally(() => clearTimeout(t)), timer]);
+}
+const timedOutReview = () => {
+  const secs = Math.round(REMOTE_TIMEOUT_MS / 1000);
+  return {
+    ran_ok: null, run_method: "timed out", run_evidence: `remote sandbox did not finish within ${secs}s`,
+    scope_match: "unclear", risk: "unknown",
+    summary: `The remote managed-agent code review did not finish within ${secs}s and was skipped — the visual behavior + scope analysis above stand.`,
+    concerns: [], environment_id: null, ran_in: "remote managed agent · antigravity (timed out)",
+  };
+};
+
 const stepsText = (res) =>
   (res.steps || [])
     .filter((s) => s.type === "model_output")
@@ -49,7 +71,7 @@ export async function codeReview(pr, diff, changedFiles, { onEvent } = {}) {
   const emit = onEvent || (() => {});
   emit({ type: "phase", phase: "code-review", message: "Managed agent reviewing the diff in a remote sandbox" });
 
-  const res = await ai.interactions.create({
+  const res = await withTimeout(ai.interactions.create({
     agent: AGENT,
     environment: "remote",
     input:
@@ -59,7 +81,12 @@ export async function codeReview(pr, diff, changedFiles, { onEvent } = {}) {
       `Changed files: ${changedFiles.join(", ")}\n\nDiff:\n${diff}\n\n` +
       `Reply with ONLY a JSON object and nothing else: ` +
       `{"scope_match":"aligned|scope_creep|unclear","risk":"low|medium|high","summary":string,"concerns":[string]}.`,
-  });
+  }));
+  if (res === TIMED_OUT) {
+    const result = timedOutReview();
+    emit({ type: "code_review", ...result });
+    return result;
+  }
 
   const text = res.output_text || stepsText(res);
   const parsed = parseJSON(text, { scope_match: "unclear", risk: "unknown", summary: text, concerns: [] });
@@ -103,7 +130,12 @@ export async function remoteReview({ repo, prNumber, title, body, baseRef, headR
     `"scope_match":"aligned|scope_creep|unclear","risk":"low|medium|high",` +
     `"summary":string,"concerns":[string]}`;
 
-  const res = await ai.interactions.create({ agent: AGENT, environment: "remote", input });
+  const res = await withTimeout(ai.interactions.create({ agent: AGENT, environment: "remote", input }));
+  if (res === TIMED_OUT) {
+    const result = timedOutReview();
+    emit({ type: "code_review", ...result });
+    return result;
+  }
   emitSteps(res, emit);
 
   const text = res.output_text || stepsText(res);

@@ -7,6 +7,7 @@ import { paths, writeJSON, writeText } from "./memory.mjs";
 const stamp = () => new Date().toISOString();
 
 export async function reviewPR(prRef = "1", { onEvent, post = true } = {}) {
+  const t0 = Date.now();
   const n = String(prRef).replace(/^pr-/, "") || "1";
   const res = await githubReview(TARGET_REPO, n, { onEvent, post });
 
@@ -32,6 +33,7 @@ export async function reviewPR(prRef = "1", { onEvent, post = true } = {}) {
       base: res.pr.baseRefName,
     },
     generated_at: stamp(),
+    took_ms: Date.now() - t0,
     verdict: res.scope.verdict,
     behavior_checks: [], // GitHub flow is page-level visual + scope; nav contracts live in main memory
     visual_comparisons,
@@ -51,4 +53,6 @@ export async function reviewPR(prRef = "1", { onEvent, post = true } = {}) {
 // Direct: node --env-file=.env.local qa-agent/review.mjs [pr-number]
 if (import.meta.url === `file://${process.argv[1]}`) {
   await reviewPR(process.argv[2] || "1");
+  // A managed-agent SDK call may still be in flight after a timeout; flush + force exit.
+  process.stdout.write("", () => process.exit(0));
 }

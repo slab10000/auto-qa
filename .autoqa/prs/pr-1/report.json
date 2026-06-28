@@ -1,0 +1,93 @@
+{
+  "pr": {
+    "id": "pr-1",
+    "number": 1,
+    "title": "Update Store page copy",
+    "description": "Refreshes the copy on the Store (products) page so it's clearer about what's available — plans, add-ons, and hardware.\n\n**Scope:** Store page copy only.",
+    "branch": "pr-store-copy",
+    "base": "main"
+  },
+  "generated_at": "2026-06-28T06:30:30.306Z",
+  "took_ms": 117086,
+  "verdict": "WARN",
+  "behavior_checks": [],
+  "visual_comparisons": [
+    {
+      "screen": "Home",
+      "changed": true,
+      "summary": "The main hero heading text was updated from 'The workspace for teams who ship.' to 'Ship faster with one workspace for your whole team.', which increased the heading to three lines and shifted the subsequent left-column content downwards.",
+      "severity": "low"
+    },
+    {
+      "screen": "Store",
+      "changed": true,
+      "summary": "The description text below the 'Plans & add-ons' heading was updated to 'Browse plans, add-ons, and hardware — add what your team needs and check out in seconds.'",
+      "severity": "low"
+    },
+    {
+      "screen": "Dashboard",
+      "changed": false,
+      "summary": "No changes detected between the baseline and the PR version.",
+      "severity": "none"
+    },
+    {
+      "screen": "Tasks",
+      "changed": false,
+      "summary": "No changes detected between the baseline and PR versions.",
+      "severity": "none"
+    },
+    {
+      "screen": "Contact",
+      "changed": false,
+      "summary": "No changes detected between the baseline and the PR version.",
+      "severity": "none"
+    }
+  ],
+  "scope_analysis": {
+    "verdict": "WARN",
+    "classification": "needs_review",
+    "in_scope": [
+      "Update to the description text on the Store page (products.html) to 'Browse plans, add-ons, and hardware — add what your team needs and check out in seconds.'"
+    ],
+    "out_of_scope": [
+      "Update to the main hero heading text on the Home page (index.html) to 'Ship faster with one workspace for your whole team.', which causes a visual layout shift by increasing the heading to three lines."
+    ],
+    "reasoning": "The change to products.html is fully in-scope and matches the stated objective. However, the modification to index.html (Home page) is explicitly out-of-scope ('Store page copy only') and introduces undocumented visual changes to the home page layout. This out-of-scope change needs to be reviewed, approved, or reverted."
+  },
+  "code_review": {
+    "ran_ok": null,
+    "run_method": "timed out",
+    "run_evidence": "remote sandbox did not finish within 90s",
+    "scope_match": "unclear",
+    "risk": "unknown",
+    "summary": "The remote managed-agent code review did not finish within 90s and was skipped — the visual behavior + scope analysis above stand.",
+    "concerns": [],
+    "environment_id": null,
+    "ran_in": "remote managed agent · antigravity"
+  },
+  "changed_files": [
+    "index.html",
+    "products.html"
+  ],
+  "evidence": {
+    "main": {
+      "home": "gh/slab10000__test-app/pr-1/base/index.html.png",
+      "store": "gh/slab10000__test-app/pr-1/base/products.html.png",
+      "dashboard": "gh/slab10000__test-app/pr-1/base/dashboard.html.png",
+      "tasks": "gh/slab10000__test-app/pr-1/base/tasks.html.png",
+      "contact": "gh/slab10000__test-app/pr-1/base/contact.html.png"
+    },
+    "pr": {
+      "home": "gh/slab10000__test-app/pr-1/head/index.html.png",
+      "store": "gh/slab10000__test-app/pr-1/head/products.html.png",
+      "dashboard": "gh/slab10000__test-app/pr-1/head/dashboard.html.png",
+      "tasks": "gh/slab10000__test-app/pr-1/head/tasks.html.png",
+      "contact": "gh/slab10000__test-app/pr-1/head/contact.html.png"
+    }
+  },
+  "github": {
+    "repo": "slab10000/test-app",
+    "url": "https://github.com/slab10000/test-app/pull/1",
+    "posted": "https://github.com/slab10000/test-app/pull/1"
+  }
+}

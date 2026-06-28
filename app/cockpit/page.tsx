@@ -1,16 +1,22 @@
 import Link from "next/link";
-import { getMetrics } from "@/lib/cockpit";
-import { getMainMemory, listPRReports } from "@/lib/memory";
-import { Badge, PipelineRail, PIPELINE, Sparkline } from "@/app/_components/ui";
+import { getMetrics, getAnalyses } from "@/lib/cockpit";
+import { getMainMemory } from "@/lib/memory";
+import { Badge, Sev, Sparkline } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
 
+function fmtTime(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  return `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
+}
+
 export default async function OverviewPage() {
   const m = await getMetrics();
-  const reports = await listPRReports();
   const mem = await getMainMemory();
+  const analyses = await getAnalyses();
 
-  const latest = reports[0];
   const replaySpeed = m.routeMs != null ? `${m.routeMs}ms` : "—";
   const cachedMs = m.routeMs ?? 447;
 
@@ -100,87 +106,132 @@ export default async function OverviewPage() {
         })}
       </div>
 
-      {/* LATEST REVIEW */}
+      {/* ANALYSES */}
       <div style={{ display: "flex", alignItems: "center", gap: 11, margin: "30px 0 13px" }}>
-        <span
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: "var(--accent)",
-            animation: "pulseI 1.8s infinite",
-          }}
-        />
-        <span
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: 11,
-            letterSpacing: ".12em",
-            color: "var(--accent-ink)",
-          }}
-        >
-          LATEST REVIEW
-        </span>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", animation: "pulseI 1.8s infinite" }} />
+        <span style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: ".12em", color: "var(--accent-ink)" }}>ANALYSES</span>
         <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--faint)" }}>
-          — the most recent run, end to end
+          — {analyses.length} review{analyses.length === 1 ? "" : "s"} · click any to expand
         </span>
       </div>
 
-      {latest ? (
-        <div
-          style={{
-            background: "var(--panel)",
-            border: "1px solid var(--line)",
-            borderRadius: 16,
-            padding: "18px 20px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Badge verdict={latest.verdict} style={{ flex: "0 0 auto" }}>
-              {(latest.verdict ?? "").toUpperCase()}
-            </Badge>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15.5 }}>
-                #{latest.pr?.number} · {latest.pr?.title}
-              </div>
-              <div
-                style={{
-                  fontFamily: "var(--mono)",
-                  fontSize: 11,
-                  color: "var(--faint)",
-                  marginTop: 2,
-                }}
-              >
-                {latest.pr?.branch}
-                {latest.scope_analysis?.classification
-                  ? ` · ${latest.scope_analysis.classification}`
-                  : ""}
-              </div>
-            </div>
-            <Link
-              href={`/pr/${latest.pr?.id}`}
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 11,
-                color: "var(--accent-2)",
-                flex: "0 0 auto",
-                textDecoration: "none",
-              }}
-            >
-              open trace →
-            </Link>
-          </div>
-          <div style={{ marginTop: 18 }}>
-            <PipelineRail stages={PIPELINE} current={7} />
-          </div>
+      {analyses.length === 0 ? (
+        <div className="empty">
+          No analyses yet — trigger a review from{" "}
+          <Link href="/run?start=review" style={{ color: "var(--accent-2)" }}>Watch it think</Link>.
         </div>
       ) : (
-        <div className="empty">
-          No reviews yet — trigger one from{" "}
-          <Link href="/run" style={{ color: "var(--accent-2)" }}>
-            Watch it think
-          </Link>
-          .
+        <div>
+          {analyses.map((a, i) => (
+            <details className="acc" key={a.key} open={i === 0}>
+              <summary>
+                <Badge verdict={a.verdict} style={{ flex: "0 0 auto" }}>{a.verdict}</Badge>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    #{a.prNumber} · {a.title}
+                  </div>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--faint)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {a.repo}{a.branch ? ` · ${a.branch}` : ""}{a.classification ? ` · ${a.classification}` : ""}
+                  </div>
+                </div>
+                {a.tookMs != null && (
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted-3)", flex: "0 0 auto" }}>◷ {fmtTime(a.tookMs)}</span>
+                )}
+                {a.source === "github" && (
+                  <span className="badge accent" style={{ flex: "0 0 auto" }}>GitHub</span>
+                )}
+                <span className="chev">▸</span>
+              </summary>
+
+              <div className="acc-body">
+                {a.description && (
+                  <p style={{ color: "var(--ink-2)", fontSize: 13.5, lineHeight: 1.6, margin: "12px 0 0" }}>{a.description}</p>
+                )}
+
+                {a.comparisons.length > 0 && (
+                  <div className="acc-sec">
+                    <div className="k">Results · per-page visual diff</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {a.comparisons.map((c) => (
+                        <div key={c.screen} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--accent-ink)", background: "rgba(124,131,255,.1)", border: "1px solid rgba(124,131,255,.24)", padding: "3px 9px", borderRadius: 6, flex: "0 0 auto" }}>{c.screen}</span>
+                          <Sev changed={c.changed} severity={c.severity} />
+                          <span style={{ fontSize: 12.5, color: "var(--muted-2)" }}>{c.summary || "no change"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(a.scopeIn.length > 0 || a.scopeOut.length > 0) && (
+                  <div className="acc-sec" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 16 }}>
+                    {a.scopeIn.length > 0 && (
+                      <div>
+                        <div className="k" style={{ color: "var(--green)" }}>In scope</div>
+                        <ul className="list in">{a.scopeIn.map((x, j) => <li key={j}>{x}</li>)}</ul>
+                      </div>
+                    )}
+                    {a.scopeOut.length > 0 && (
+                      <div>
+                        <div className="k" style={{ color: "var(--red)" }}>What it caught · out of scope</div>
+                        <ul className="list out">{a.scopeOut.map((x, j) => <li key={j}>{x}</li>)}</ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {a.changedFiles.length > 0 && (
+                  <div className="acc-sec">
+                    <div className="k">Changed files</div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--muted-2)", display: "flex", flexDirection: "column", gap: 4 }}>
+                      {a.changedFiles.map((f) => (
+                        <div key={f}><span style={{ color: "var(--accent-2)" }}>M</span>&nbsp; {f}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {a.codeReview && (
+                  <div className="acc-sec">
+                    <div className="k">Code-side review · managed agent</div>
+                    <div style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--muted-2)" }}>scope: {a.codeReview.scopeMatch} · risk: {a.codeReview.risk}</div>
+                    {a.codeReview.summary && (
+                      <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.55, marginTop: 8 }}>{a.codeReview.summary}</div>
+                    )}
+                    {a.codeReview.concerns.length > 0 && (
+                      <ul className="list out" style={{ marginTop: 4 }}>{a.codeReview.concerns.map((x, j) => <li key={j}>{x}</li>)}</ul>
+                    )}
+                  </div>
+                )}
+
+                {a.skills.length > 0 && (
+                  <div className="acc-sec">
+                    <div className="k">Skills written this run</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {a.skills.map((s) => (
+                        <span key={s.name} style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--accent-ink)", background: "rgba(124,131,255,.08)", border: "1px solid rgba(124,131,255,.22)", padding: "5px 10px", borderRadius: 8 }}>✦ {s.name}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--line-soft)" }}>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--faint)" }}>
+                    {a.tookMs != null
+                      ? `analysed in ${fmtTime(a.tookMs)}`
+                      : a.generatedAt
+                        ? `reviewed ${a.generatedAt}`
+                        : "reviewed via GitHub"}
+                  </span>
+                  <span style={{ flex: 1 }} />
+                  {a.href && <Link href={a.href} className="btn btn-ghost">open trace →</Link>}
+                  {a.githubUrl && (
+                    <a href={a.githubUrl} target="_blank" rel="noreferrer" className="btn btn-ghost">view on GitHub →</a>
+                  )}
+                </div>
+              </div>
+            </details>
+          ))}
         </div>
       )}
 

@@ -4,6 +4,7 @@ import {
   evidence,
   getMainMemory,
   getRoutes,
+  getPRSkills,
   listPRReports,
   listGhReviews,
 } from "./memory";
@@ -30,9 +31,13 @@ export async function getMetrics(): Promise<Metrics> {
   const reports = await listPRReports();
   const gh = await listGhReviews();
 
+  // Dedup GitHub reviews already covered by a local report (same repo + PR).
+  const seen = new Set(reports.map((r) => `${r.github?.repo ?? ""}#${r.pr?.number ?? ""}`));
+  const ghUnique = gh.filter((g) => !seen.has(`${g.repo}#${g.pr.replace(/^pr-/, "")}`));
+
   const flagged = (v: string) => ["FAIL", "WARN"].includes((v || "").toUpperCase());
   const regressions =
-    reports.filter((r) => flagged(r.verdict)).length + gh.filter((g) => flagged(g.verdict)).length;
+    reports.filter((r) => flagged(r.verdict)).length + ghUnique.filter((g) => flagged(g.verdict)).length;
 
   const rm = reports.find((r) => r.route_metrics)?.route_metrics;
 
@@ -41,7 +46,7 @@ export async function getMetrics(): Promise<Metrics> {
     contracts: mem.behaviors.length,
     skills: mem.skills.length,
     routes: routes.length,
-    prsReviewed: reports.length + gh.length,
+    prsReviewed: reports.length + ghUnique.length,
     regressionsCaught: regressions,
     routeMs: rm?.ms ?? null,
     routeCached: rm?.cached ?? false,
@@ -112,6 +117,151 @@ export async function getFeaturedReview(): Promise<Featured | null> {
     before: before ? evidence(before.rel) : null,
     after: after ? evidence(after.rel) : null,
   };
+}
+
+/* ---------- analyses (Overview list) ---------- */
+
+export type Comparison = { screen: string; changed: boolean; severity: string; summary: string };
+export type Analysis = {
+  key: string;
+  source: "local" | "github";
+  repo: string;
+  prNumber: string;
+  prId: string;
+  title: string;
+  branch: string;
+  base: string;
+  verdict: string;
+  classification: string;
+  description: string;
+  tookMs: number | null;
+  generatedAt: string | null;
+  changedFiles: string[];
+  comparisons: Comparison[];
+  scopeIn: string[];
+  scopeOut: string[];
+  codeReview: { scopeMatch: string; risk: string; summary: string; concerns: string[] } | null;
+  skills: { name: string }[];
+  href: string | null; // in-cockpit /pr/<id>
+  githubUrl: string | null;
+};
+
+// Parse the markdown comment auto-qa posts (our own stable format) into structured fields.
+function parseGhComment(c: string) {
+  const head = c.match(/auto-qa review\s*[—-]\s*\*\*(\w+)\*\*\s*·\s*([\w_]+)/i);
+  const verdict = (head?.[1] || "WARN").toUpperCase();
+  const classification = head?.[2] || "needs_review";
+  const title = c.match(/Stated scope:\s*_([^_]+)_/)?.[1] || "Pull request";
+  const afterQuote = c.split(/Stated scope:[^\n]*\n/)[1] ?? c;
+  const description = (afterQuote.split(/\n#{2,3} /)[0] || "").trim();
+
+  const visBlock = c.match(/#{2,3}[^\n]*Visual behavior[\s\S]*?(?=\n#{2,3} |$)/)?.[0] || "";
+  const comparisons: Comparison[] = [...visBlock.matchAll(/^- \*\*(.+?)\*\*\s*[—-]\s*(.+)$/gm)].map((m) => {
+    const screen = m[1];
+    const rest = m[2];
+    const changed = !/no change/i.test(rest);
+    const severity = rest.match(/changed \((\w+)\)/)?.[1] || (changed ? "low" : "none");
+    const summary = rest.replace(/^changed \(\w+\):\s*/, "").trim();
+    return { screen, changed, severity, summary };
+  });
+
+  const codeBlock = c.match(/#{2,3}[^\n]*Code-side review[\s\S]*?(?=\n#{2,3} |$)/)?.[0] || "";
+  const cm = codeBlock.match(/\*\*scope:\*\*\s*([\w_]+)\s*·\s*\*\*risk:\*\*\s*(\w+)/);
+  const codeAfter = cm ? codeBlock.slice(codeBlock.indexOf(cm[0]) + cm[0].length) : "";
+  const codeSummary = (codeAfter.split(/\n- /)[0] || "").trim();
+  const concerns = [...codeAfter.matchAll(/\n- (.+)/g)].map((m) => m[1].trim());
+  const codeReview = cm ? { scopeMatch: cm[1], risk: cm[2], summary: codeSummary, concerns } : null;
+
+  const bullets = (b: string) => [...b.matchAll(/- (.+)/g)].map((m) => m[1].trim()).filter((x) => x && x !== "—");
+  const scopeIn = bullets(c.match(/\*\*In scope\*\*\n([\s\S]*?)(?=\n\*\*Out of scope\*\*|\n#{2,3} |$)/)?.[1] || "");
+  const scopeOut = bullets(c.match(/\*\*Out of scope\*\*\n([\s\S]*?)(?=\n#{2,3} |$)/)?.[1] || "");
+  const changedFiles = [...(c.match(/#{2,3} Changed files\n([\s\S]*?)(?=\n<sub|\n#{2,3} |$)/)?.[1] || "").matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+
+  return { verdict, classification, title, description, comparisons, codeReview, scopeIn, scopeOut, changedFiles };
+}
+
+// All analyses (PR reviews) for the Overview list: rich local reports first, then any
+// GitHub-only reviews not already covered by a local report. Newest first.
+export async function getAnalyses(): Promise<Analysis[]> {
+  const reports = await listPRReports();
+  const gh = await listGhReviews();
+  const out: Analysis[] = [];
+  const seen = new Set<string>();
+
+  for (const r of reports) {
+    const repo = r.github?.repo ?? "";
+    const prNumber = String(r.pr?.number ?? "");
+    const key = `${repo}#${prNumber}`;
+    seen.add(key);
+    out.push({
+      key,
+      source: "local",
+      repo,
+      prNumber,
+      prId: r.pr?.id ?? `pr-${prNumber}`,
+      title: r.pr?.title ?? "",
+      branch: r.pr?.branch ?? "",
+      base: r.pr?.base ?? "main",
+      verdict: r.verdict,
+      classification: r.scope_analysis?.classification ?? "",
+      description: r.pr?.description ?? "",
+      tookMs: r.took_ms ?? null,
+      generatedAt: r.generated_at ?? null,
+      changedFiles: r.changed_files ?? [],
+      comparisons: (r.visual_comparisons ?? []).map((c: any) => ({
+        screen: c.screen,
+        changed: !!c.changed,
+        severity: c.severity,
+        summary: c.summary,
+      })),
+      scopeIn: r.scope_analysis?.in_scope ?? [],
+      scopeOut: r.scope_analysis?.out_of_scope ?? [],
+      codeReview: r.code_review
+        ? {
+            scopeMatch: r.code_review.scope_match,
+            risk: r.code_review.risk,
+            summary: r.code_review.summary,
+            concerns: r.code_review.concerns ?? [],
+          }
+        : null,
+      skills: await getPRSkills(r.pr?.id ?? `pr-${prNumber}`),
+      href: `/pr/${r.pr?.id ?? `pr-${prNumber}`}`,
+      githubUrl: r.github?.url ?? (repo ? `https://github.com/${repo}/pull/${prNumber}` : null),
+    });
+  }
+
+  for (const g of gh) {
+    const prNumber = g.pr.replace(/^pr-/, "");
+    const key = `${g.repo}#${prNumber}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const p = parseGhComment(g.comment);
+    out.push({
+      key,
+      source: "github",
+      repo: g.repo,
+      prNumber,
+      prId: g.pr,
+      title: p.title,
+      branch: "",
+      base: "main",
+      verdict: p.verdict,
+      classification: p.classification,
+      description: p.description,
+      tookMs: null,
+      generatedAt: null,
+      changedFiles: p.changedFiles,
+      comparisons: p.comparisons,
+      scopeIn: p.scopeIn,
+      scopeOut: p.scopeOut,
+      codeReview: p.codeReview,
+      skills: [],
+      href: null,
+      githubUrl: `https://github.com/${g.repo}/pull/${prNumber}`,
+    });
+  }
+
+  return out;
 }
 
 /* ---------- run-trace reconstruction ---------- */

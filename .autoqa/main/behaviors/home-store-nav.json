@@ -1,0 +1,18 @@
+{
+  "id": "home-store-nav",
+  "screen": "Home",
+  "action": "Click the Store link in the top nav",
+  "expected_result": {
+    "type": "navigation",
+    "url_changed": true,
+    "destination_url": "/products.html",
+    "visual_anchor": "Store heading visible"
+  },
+  "evidence": {
+    "before": "screenshots/main/home.png",
+    "after": "screenshots/main/store.png"
+  },
+  "confidence": 0.92,
+  "learned_from": "main",
+  "last_verified": "2026-06-28T06:16:57.817Z"
+}
