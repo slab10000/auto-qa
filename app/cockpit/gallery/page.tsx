@@ -36,7 +36,7 @@ export default async function GalleryPage() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
                 {g.shots.map((shot) => (
-                  <ScreenShot key={shot} src={evidence(shot)} url="sample-app" height={158} />
+                  <ScreenShot key={shot} src={evidence(shot)} url="test-app" height={158} />
                 ))}
               </div>
             </div>

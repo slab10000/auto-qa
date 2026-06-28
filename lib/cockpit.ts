@@ -8,7 +8,7 @@ import {
   listGhReviews,
 } from "./memory";
 
-export const REPO_LABEL = "sample-app";
+export const REPO_LABEL = "slab10000/test-app";
 
 export const PIPELINE_LABELS = ["Clone", "Diff", "Drive", "Compare", "Scope", "Code", "Verdict"];
 
@@ -46,6 +46,71 @@ export async function getMetrics(): Promise<Metrics> {
     routeMs: rm?.ms ?? null,
     routeCached: rm?.cached ?? false,
     routeLlmCalls: rm?.llmCalls ?? null,
+  };
+}
+
+/* ---------- featured review (landing "what it caught") ---------- */
+
+export type Featured = {
+  source: "local" | "github";
+  repo: string;
+  prId: string;
+  prNumber: string;
+  title: string;
+  verdict: string;
+  url: string | null;
+  headline: string; // the out-of-scope change, one line
+  before: string | null; // evidence() url
+  after: string | null; // evidence() url
+};
+
+// Picks the most demo-worthy review to feature on the landing: a local cockpit
+// report if one exists, otherwise the real GitHub review captured under .autoqa/gh.
+export async function getFeaturedReview(): Promise<Featured | null> {
+  const reports = await listPRReports();
+  if (reports.length) {
+    const r = reports[0];
+    // feature the highest-severity changed screen (out-of-scope story)
+    const sev = (s: string) => ({ high: 3, medium: 2, low: 1, none: 0 } as any)[(s || "").toLowerCase()] ?? 0;
+    const changed = (r.visual_comparisons ?? []).filter((c: any) => c.changed).sort((a: any, b: any) => sev(b.severity) - sev(a.severity));
+    const top = changed[0];
+    const id = (top?.screen || "").toLowerCase();
+    return {
+      source: "local",
+      repo: r.github?.repo ?? "",
+      prId: r.pr.id,
+      prNumber: String(r.pr.number),
+      title: r.pr.title,
+      verdict: r.verdict,
+      url: r.github?.url ?? null,
+      headline: r.scope_analysis?.out_of_scope?.[0] ?? top?.summary ?? r.scope_analysis?.reasoning ?? "",
+      before: r.evidence?.main?.[id] ? evidence(r.evidence.main[id]) : null,
+      after: r.evidence?.pr?.[id] ? evidence(r.evidence.pr[id]) : null,
+    };
+  }
+
+  const gh = await listGhReviews();
+  if (!gh.length) return null;
+  const g = gh[0];
+  const num = g.pr.replace(/^pr-/, "");
+  const statedScope = g.comment.match(/Stated scope:\s*_([^_]+)_/)?.[1] ?? "Pull request";
+  const homeLine =
+    g.comment.match(/\*\*Home\*\*\s*[—-]\s*changed[^\n:]*:\s*([^\n]+)/i)?.[1] ??
+    g.comment.match(/out of scope[\s\S]*?\n-\s*([^\n]+)/i)?.[1] ??
+    "";
+  const before = g.base.find((s) => s.screen === "index");
+  const after = g.head.find((s) => s.screen === "index");
+  return {
+    source: "github",
+    repo: g.repo,
+    prId: g.pr,
+    prNumber: num,
+    title: statedScope,
+    verdict: g.verdict,
+    url: `https://github.com/${g.repo}/pull/${num}`,
+    headline: homeLine,
+    before: before ? evidence(before.rel) : null,
+    after: after ? evidence(after.rel) : null,
   };
 }
 

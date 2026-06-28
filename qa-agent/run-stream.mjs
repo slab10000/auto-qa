@@ -11,13 +11,15 @@ const [cmd, prId] = process.argv.slice(2);
 try {
   if (cmd === "onboard") {
     const { onboardMain } = await import("./onboard.mjs");
-    await onboardMain(undefined, { onEvent: emit });
+    await onboardMain({ onEvent: emit });
   } else if (cmd === "merge") {
     const { mergePR } = await import("./merge.mjs");
     await mergePR(prId || "pr-1", { onEvent: emit });
   } else {
+    // Interactive cockpit review does NOT post to GitHub (avoid comment spam on every click);
+    // the CLI `npm run review <n>` posts.
     const { reviewPR } = await import("./review.mjs");
-    await reviewPR(prId || "pr-1", { onEvent: emit });
+    await reviewPR(prId || "1", { onEvent: emit, post: false });
   }
   emit({ type: "done" });
 } catch (err) {

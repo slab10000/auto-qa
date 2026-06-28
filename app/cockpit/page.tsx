@@ -70,7 +70,7 @@ export default async function OverviewPage() {
         Overview
       </h2>
       <p style={{ color: "var(--muted-2)", fontSize: 15, lineHeight: 1.55, margin: "9px 0 0" }}>
-        How the system is learning <b style={{ color: "var(--ink-2)" }}>sample-app</b> and getting
+        How the system is learning <b style={{ color: "var(--ink-2)" }}>slab10000/test-app</b> and getting
         faster — live.
       </p>
 

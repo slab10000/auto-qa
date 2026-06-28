@@ -30,7 +30,7 @@ export default async function MemoryPage() {
         }}
       >
         What the agent learned by exploring{" "}
-        <b style={{ color: "var(--ink-2)" }}>sample-app</b> like a new hire. This
+        <b style={{ color: "var(--ink-2)" }}>slab10000/test-app</b> like a new hire. This
         is the baseline every pull request is measured against.
       </p>
 
@@ -46,6 +46,12 @@ export default async function MemoryPage() {
       >
         SCREENS LEARNED · {mem.screens.length}
       </div>
+      {mem.screens.length === 0 && (
+        <div className="empty">
+          No product memory yet. Run <code style={{ fontFamily: "var(--mono)" }}>npm run onboard</code> to clone
+          slab10000/test-app and learn its screens, contracts and routes.
+        </div>
+      )}
       <div
         style={{
           display: "grid",
@@ -65,7 +71,7 @@ export default async function MemoryPage() {
           >
             <ScreenShot
               src={evidence(s.screenshot)}
-              url={"sample-app" + s.url}
+              url={"test-app" + s.url}
               height={150}
             />
             <div style={{ padding: "14px 15px" }}>

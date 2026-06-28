@@ -76,7 +76,7 @@ export default async function PRPage(props: { params: Promise<{ id: string }> })
 
   if (!report) {
     return (
-      <CockpitShell repo="sample-app">
+      <CockpitShell repo="slab10000/test-app">
         <Link href="/cockpit/current" style={backBtnStyle}>
           <span>←</span> back
         </Link>
@@ -91,7 +91,7 @@ export default async function PRPage(props: { params: Promise<{ id: string }> })
   const v = buildRunView(report, prSkills);
 
   return (
-    <CockpitShell repo="sample-app">
+    <CockpitShell repo="slab10000/test-app">
       <Link href="/cockpit/current" style={backBtnStyle}>
         <span>←</span> Back to Current PRs
       </Link>

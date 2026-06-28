@@ -57,23 +57,24 @@ Computer Use runs **locally** (full control, a visible browser, fast iteration);
 
 ---
 
-## Two demo paths
+## The demo — a real GitHub repo
 
-**1 · Local sample app** — a tiny SaaS app with a staged regression: a PR scoped to *"update billing copy"* that secretly turns the Settings button from a page navigation into a modal. auto-qa learns main, replays the contract, and returns:
+auto-qa points at a real GitHub repository ([`slab10000/test-app`](https://github.com/slab10000/test-app) by default — override with `AUTOQA_REPO=owner/name`). It clones `main`, learns the app, then reviews an open PR and **posts the verdict as a PR comment**:
 
 ```
-🔴 FAIL — suspicious
-Behavior contract: expected navigation → /settings.html, observed modal  ✗ mismatch
-Scope analysis: billing copy is in scope; the Settings navigation change is NOT.
+🟡 WARN — needs_review
+Stated scope: "Update Store page copy"
+Visual: Home — changed (medium): the landing hero headline was rewritten (out of scope)
+Scope analysis: the Store copy is in scope; the homepage hero change is NOT.
 ```
 
-**2 · A real GitHub PR** — run it against a live repo and it posts a comment combining the visual (Computer Use) and code-side (managed agent) findings, with an in-scope / out-of-scope breakdown.
+Every page is driven in a real Chromium browser by Computer Use, diffed main-vs-PR, and cross-checked by a remote managed agent reading the diff.
 
 ---
 
 ## Getting started
 
-**Prerequisites:** Node 20+, a [Gemini API key](https://aistudio.google.com/api-keys), and (for GitHub reviews) the `gh` CLI authenticated.
+**Prerequisites:** Node 20+, a [Gemini API key](https://aistudio.google.com/api-keys), and the [`gh`](https://cli.github.com) CLI authenticated (the agent clones the target repo and posts review comments through it).
 
 ```bash
 npm install
@@ -87,18 +88,18 @@ cp .env.example .env.local        # then add your GEMINI_API_KEY
 npm run dev                       # → http://localhost:3000
 ```
 
-**Drive the agent from the CLI:**
+**Drive the agent from the CLI** (targets `slab10000/test-app`; override with `AUTOQA_REPO`):
 
 ```bash
-npm run onboard                   # learn the app on main → product memory
-npm run review                    # review the sample PR (pr-1) → verdict + evidence
+npm run onboard                   # clone the repo's main, explore it → product memory
+npm run review 1                  # review PR #1 → verdict + evidence, and post a PR comment
 npm run agent -- merge pr-1       # approve & fold the PR's knowledge into main
 
-# review a real GitHub PR and post a comment:
-node --env-file=.env.local qa-agent/github-review.mjs <owner/repo> <pr-number>
+# review any repo's PR directly:
+npm run github-review -- <owner/repo> <pr-number>
 ```
 
-> The local sample app lives in `sample-app/` as its own git fixture (main vs PR branch). The committed `.autoqa/` memory lets the cockpit show real evidence even before you run anything.
+> The agent clones the target repo on demand (into gitignored `.autoqa/**/repo/`). The committed `.autoqa/` evidence lets the cockpit show the last review before you run anything.
 
 ---
 

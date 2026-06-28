@@ -117,7 +117,7 @@ export default function RunPage() {
   const traceEvents = events.filter((e) => e.type !== "log" && e.type !== "exit");
 
   return (
-    <CockpitShell repo="sample-app">
+    <CockpitShell repo="slab10000/test-app">
       <h2 style={{ fontFamily: "var(--display)", fontSize: 27, fontWeight: 700, margin: 0 }}>
         Watch it think
       </h2>

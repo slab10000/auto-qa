@@ -1,6 +1,6 @@
 // Code-side review via a remote Gemini managed agent (Antigravity).
 // Three modes, all running in an ephemeral remote sandbox:
-//   codeReview()       — review a diff passed as text (used by the LOCAL sample-app path,
+//   codeReview()       — review a diff passed as text (used by the local-diff path,
 //                        whose repo never reaches GitHub so there's no URL to clone).
 //   remoteReview()     — given a repo URL + PR refs, the agent CLONES it, RUNS the app to
 //                        verify it boots, and reviews the diff against the stated scope.
@@ -44,7 +44,7 @@ function emitSteps(res, emit, redact = (s) => s) {
   }
 }
 
-// --- Mode 1: review a diff passed as text (local sample-app path) -------------
+// --- Mode 1: review a diff passed as text (local-diff path) -------------
 export async function codeReview(pr, diff, changedFiles, { onEvent } = {}) {
   const emit = onEvent || (() => {});
   emit({ type: "phase", phase: "code-review", message: "Managed agent reviewing the diff in a remote sandbox" });

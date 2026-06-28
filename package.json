@@ -11,7 +11,7 @@
     "agent": "node --env-file=.env.local qa-agent/cli.mjs",
     "onboard": "node --env-file=.env.local qa-agent/onboard.mjs",
     "review": "node --env-file=.env.local qa-agent/review.mjs",
-    "drive-test": "node --env-file=.env.local qa-agent/_drive-test.mjs"
+    "github-review": "node --env-file=.env.local qa-agent/github-review.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",

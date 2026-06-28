@@ -16,11 +16,8 @@ playwright-report/
 test-results/
 *.log
 
-# cloned target repos live inside PR memory — never track them
+# cloned target repos live inside memory — never track them
 .autoqa/**/repo/
-
-# sample target app is its own git repo (a test target the agent clones)
-/sample-app/
 
 # Claude Code local state / transient worktrees
 .claude/worktrees/
